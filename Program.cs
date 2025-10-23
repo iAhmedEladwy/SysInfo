@@ -1,46 +1,49 @@
 ﻿using System;
-using System.Runtime.InteropServices;
+using System.Reflection;
 using System.Windows.Forms;
 
 namespace CNSysInfo
 {
     internal static class Program
     {
-        [DllImport("user32.dll")]
-        private static extern bool SetProcessDPIAware();
-
-        [DllImport("shcore.dll")]
-        private static extern int SetProcessDpiAwareness(PROCESS_DPI_AWARENESS awareness);
-
-        private enum PROCESS_DPI_AWARENESS
-        {
-            Process_DPI_Unaware = 0,
-            Process_System_DPI_Aware = 1,
-            Process_Per_Monitor_DPI_Aware = 2
-        }
-
         /// <summary>
         /// The main entry point for the application.
         /// </summary>
         [STAThread]
         static void Main()
         {
-            if (Environment.OSVersion.Version.Major >= 6)
-            {
-                try
-                {
-                    SetProcessDpiAwareness(PROCESS_DPI_AWARENESS.Process_Per_Monitor_DPI_Aware);
-                }
-                catch
-                {
-                    // Fallback for Windows 7 or if SetProcessDpiAwareness fails
-                    SetProcessDPIAware();
-                }
-            }
-
+            TryConfigureHighDpiMode();
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new frmSysInfo());
+        }
+
+        private static void TryConfigureHighDpiMode()
+        {
+            try
+            {
+                var assembly = typeof(Application).Assembly;
+                var highDpiModeType = assembly.GetType("System.Windows.Forms.HighDpiMode");
+                if (highDpiModeType == null)
+                {
+                    return;
+                }
+
+                var perMonitorV2Value = Enum.Parse(highDpiModeType, "PerMonitorV2");
+
+                var setHighDpiMode = typeof(Application).GetMethod(
+                    "SetHighDpiMode",
+                    BindingFlags.Public | BindingFlags.Static,
+                    binder: null,
+                    types: new[] { highDpiModeType },
+                    modifiers: null);
+
+                setHighDpiMode?.Invoke(null, new[] { perMonitorV2Value });
+            }
+            catch
+            {
+                // Ignore - API not available on current framework/runtime.
+            }
         }
     }
 }

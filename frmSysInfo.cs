@@ -15,7 +15,8 @@ namespace CNSysInfo
 {
     public partial class frmSysInfo : Form
     {
-    private SystemInfoSnapshot? _currentSnapshot;
+        private SystemInfoSnapshot? _currentSnapshot;
+        private bool _initialScalingApplied;
 
         private enum SpecRatingLevel
         {
@@ -36,7 +37,27 @@ namespace CNSysInfo
         public frmSysInfo()
         {
             InitializeComponent();
+            AutoScaleMode = AutoScaleMode.Dpi;
+            AutoScaleDimensions = new SizeF(96f, 96f);
         }
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+
+            if (_initialScalingApplied || DesignMode)
+            {
+                return;
+            }
+
+            _initialScalingApplied = true;
+
+            if (AutoScaleMode != AutoScaleMode.None)
+            {
+                PerformAutoScale();
+            }
+        }
+
         private void forceRestartOutlookToolStripMenuItem_Click(object sender, EventArgs e)
         {
             RunCmdCommand("TASKKILL /F /IM outlook.exe");
