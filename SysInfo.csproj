@@ -116,6 +116,7 @@
     <Compile Include="modern_progressbar.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="StorageHealthService.cs" />
     <Compile Include="SystemInfoService.cs" />
     <Compile Include="ClipboardHelper.cs" />
     <Compile Include="Program.cs" />

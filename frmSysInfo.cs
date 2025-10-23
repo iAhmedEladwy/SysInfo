@@ -287,7 +287,8 @@ namespace CNSysInfo
             txtSystemModel.Text = snapshot.SystemModel;
             txtSerialNumber.Text = snapshot.SerialNumber;
             txtManufacturer.Text = snapshot.Manufacturer;
-            
+
+            // Memory with progress bar
             var memoryText = $"{snapshot.InstalledPhysicalMemory} ({snapshot.UsablePhysicalMemory} usable)";
             if (snapshot.MemorySlotsTotal > 0)
             {
@@ -303,9 +304,45 @@ namespace CNSysInfo
             {
                 memoryText += $" | Speed: {snapshot.MemorySpeedMhz} MHz";
             }
-            
             txtMemory.Text = memoryText;
+
+            // Update memory progress bar - calculate usage percentage
+            int memoryUsagePercent = CalculateMemoryUsagePercentage(snapshot);
+            pbMemory.Value = memoryUsagePercent;
+            pbMemory.Text = $"{memoryUsagePercent}%";
+
+            // Storage with progress bar
             txtStorage.Text = BuildStorageText(snapshot.Disks);
+
+            // Update storage progress bar - calculate primary disk usage
+            var (storageUsed, storageTotal) = CalculateStorageUsage(snapshot.Disks);
+            int storagePercent = storageTotal > 0 ? (int)((storageUsed / storageTotal) * 100) : 0;
+            pbStorage.Value = storagePercent;
+            pbStorage.Text = $"{storagePercent}%";
+
+            // Battery with progress bar
+            txtBatteryHealth.Text = BuildBatteryText(snapshot.BatteryInfo);
+
+            // Update battery progress bar
+            if (snapshot.BatteryInfo != null)
+            {
+                pbBattery.Value = snapshot.BatteryInfo.HealthPercentage;
+                pbBattery.Text = $"{snapshot.BatteryInfo.HealthPercentage}%";
+
+                // Change color based on battery health
+                if (snapshot.BatteryInfo.HealthPercentage >= 80)
+                    pbBattery.ProgressColor = Color.FromArgb(16, 185, 129); // Green
+                else if (snapshot.BatteryInfo.HealthPercentage >= 60)
+                    pbBattery.ProgressColor = Color.FromArgb(245, 158, 11); // Orange
+                else
+                    pbBattery.ProgressColor = Color.FromArgb(239, 68, 68); // Red
+            }
+            else
+            {
+                pbBattery.Value = 0;
+                pbBattery.Text = "N/A";
+            }
+
             txtCPU.Text = BuildCpuText(snapshot);
             txtAssetTag.Text = snapshot.AssetTag;
             txtGPU.Text = BuildGpuText(snapshot.Gpus);
@@ -316,11 +353,85 @@ namespace CNSysInfo
             txtOS.Text = snapshot.OsDisplay;
             txtBiosVersion.Text = snapshot.BiosVersion;
             txtWinActivationStatus.Text = snapshot.WindowsActivationStatus;
-            txtBatteryHealth.Text = BuildBatteryText(snapshot.BatteryInfo);
 
             UpdateSpecRating(snapshot);
         }
+private int CalculateMemoryUsagePercentage(SystemInfoSnapshot snapshot)
+{
+    try
+    {
+        // Extract total memory in GB
+        var match = System.Text.RegularExpressions.Regex.Match(
+            snapshot.UsablePhysicalMemory, 
+            @"([\d.]+)\s*GB");
+        
+        if (match.Success && double.TryParse(match.Groups[1].Value, out double totalGB))
+        {
+            // Get current memory usage from Performance Counter
+            using (var memCounter = new System.Diagnostics.PerformanceCounter("Memory", "Available MBytes"))
+            {
+                float availableMB = memCounter.NextValue();
+                float totalMB = (float)(totalGB * 1024);
+                float usedMB = totalMB - availableMB;
+                int usagePercent = (int)((usedMB / totalMB) * 100);
+                
+                return Math.Max(0, Math.Min(100, usagePercent));
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        Debug.WriteLine($"Error calculating memory usage: {ex.Message}");
+    }
+    
+    return 0; // Default if calculation fails
+}
 
+private (double used, double total) CalculateStorageUsage(IReadOnlyList<DiskInfo> disks)
+{
+    if (disks == null || disks.Count == 0)
+        return (0, 0);
+    
+    try
+    {
+        // Get primary disk (Disk0)
+        var primaryDisk = disks.FirstOrDefault(d => d.Index == "0") ?? disks[0];
+        
+        // Extract size from format like "931.51 GB"
+        var match = System.Text.RegularExpressions.Regex.Match(
+            primaryDisk.Size, 
+            @"([\d.]+)\s*(GB|TB)");
+        
+        if (match.Success && double.TryParse(match.Groups[1].Value, out double size))
+        {
+            double sizeInGB = size;
+            if (match.Groups[2].Value == "TB")
+                sizeInGB *= 1024;
+            
+            // Use DriveInfo to get actual usage
+            var drives = System.IO.DriveInfo.GetDrives();
+            var systemDrive = drives.FirstOrDefault(d => d.IsReady && d.DriveType == System.IO.DriveType.Fixed);
+            
+            if (systemDrive != null)
+            {
+                double totalGB = systemDrive.TotalSize / (1024.0 * 1024.0 * 1024.0);
+                double freeGB = systemDrive.AvailableFreeSpace / (1024.0 * 1024.0 * 1024.0);
+                double usedGB = totalGB - freeGB;
+                
+                return (usedGB, totalGB);
+            }
+            
+            // Fallback: assume 70% usage if we can't get actual data
+            return (sizeInGB * 0.7, sizeInGB);
+        }
+    }
+    catch (Exception ex)
+    {
+        Debug.WriteLine($"Error calculating storage usage: {ex.Message}");
+    }
+    
+    return (0, 0);
+}
         private static string BuildCpuText(SystemInfoSnapshot snapshot)
         {
             if (snapshot == null)
