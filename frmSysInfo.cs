@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -13,7 +15,23 @@ namespace CNSysInfo
 {
     public partial class frmSysInfo : Form
     {
-        private SystemInfoSnapshot _currentSnapshot;
+    private SystemInfoSnapshot? _currentSnapshot;
+
+        private enum SpecRatingLevel
+        {
+            Unknown,
+            Approved,
+            Low,
+            Obsolete
+        }
+
+        private enum StorageKind
+        {
+            Unknown,
+            Nvme,
+            SataSsd,
+            Hdd
+        }
 
         public frmSysInfo()
         {
@@ -106,12 +124,18 @@ namespace CNSysInfo
         }
         private async void frmSysInfo_Load(object sender, EventArgs e)
         {
-           lblversion.Text = "ELADWYSOFT SysInfo " + Application.ProductVersion;
+            lblversion.Text = "ELADWYSOFT SysInfo " + Application.ProductVersion;
             // Show loading message
             textBox1.Text = "Loading system information, please wait...";
             txtOS.Text = "Loading...";
             txtBatteryHealth.Text = "Loading...";
-            
+            lblSpecRatingValue.Text = "Evaluating...";
+            lblSpecRatingValue.BackColor = Color.LightGray;
+            lblSpecRatingValue.ForeColor = Color.Black;
+
+            // Set MaximumSize to the current screen size for better adaptation
+            this.MaximumSize = Screen.PrimaryScreen.WorkingArea.Size;
+
             await LoadSystemInfoAsync();
         }
 
@@ -186,8 +210,10 @@ namespace CNSysInfo
             // Software Info
             txtOS.Text = snapshot.OsDisplay;
             txtBiosVersion.Text = snapshot.BiosVersion;
-            txtWinActivationStatus.Text = snapshot.WindowsActivationStatus;            
+            txtWinActivationStatus.Text = snapshot.WindowsActivationStatus;
             txtBatteryHealth.Text = BuildBatteryText(snapshot.BatteryInfo);
+
+            UpdateSpecRating(snapshot);
         }
         
         private static string BuildCpuText(SystemInfoSnapshot snapshot)
@@ -267,6 +293,252 @@ namespace CNSysInfo
             }
 
             return builder.ToString().TrimEnd();
+        }
+
+        private void UpdateSpecRating(SystemInfoSnapshot snapshot)
+        {
+            if (snapshot == null)
+            {
+                ApplySpecRating(SpecRatingLevel.Low);
+                return;
+            }
+
+            var cpuSupport = CpuSupportEvaluator.Evaluate(snapshot);
+            var memoryGb = ExtractMemoryInGigabytes(snapshot.InstalledPhysicalMemory);
+            var primaryDisk = ResolvePrimaryDisk(snapshot.Disks);
+            var storageKind = ClassifyStorageKind(primaryDisk);
+
+            var hasCpuData = cpuSupport != CpuSupportLevel.Unknown;
+            var hasMemoryData = memoryGb > 0;
+            var hasDiskData = storageKind != StorageKind.Unknown;
+
+            var level = EvaluateSpecRating(cpuSupport, hasCpuData, memoryGb, hasMemoryData, storageKind, hasDiskData);
+            ApplySpecRating(level);
+        }
+
+        private static double ExtractMemoryInGigabytes(string memoryDisplay)
+        {
+            return ExtractCapacityInGigabytes(memoryDisplay);
+        }
+
+        private static DiskInfo ResolvePrimaryDisk(IReadOnlyList<DiskInfo> disks)
+        {
+            if (disks == null || disks.Count == 0)
+            {
+                return null;
+            }
+
+            DiskInfo primary = null;
+            foreach (var disk in disks)
+            {
+                if (disk == null)
+                {
+                    continue;
+                }
+
+                if (!string.IsNullOrWhiteSpace(disk.Index) &&
+                    string.Equals(disk.Index.Trim(), "0", StringComparison.OrdinalIgnoreCase))
+                {
+                    return disk;
+                }
+
+                if (primary == null)
+                {
+                    primary = disk;
+                }
+            }
+
+            return primary;
+        }
+
+        private static double ExtractCapacityInGigabytes(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return -1;
+            }
+
+            var match = Regex.Match(value, @"([0-9]+(?:\.[0-9]+)?)\s*(TB|GB|MB)", RegexOptions.IgnoreCase);
+            if (!match.Success)
+            {
+                return -1;
+            }
+
+            if (!double.TryParse(match.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var numeric))
+            {
+                return -1;
+            }
+
+            var unit = match.Groups[2].Value.ToUpperInvariant();
+            switch (unit)
+            {
+                case "TB":
+                    return numeric * 1024;
+                case "GB":
+                    return numeric;
+                case "MB":
+                    return numeric / 1024;
+                default:
+                    return -1;
+            }
+        }
+
+        private static StorageKind ClassifyStorageKind(DiskInfo disk)
+        {
+            if (disk == null)
+            {
+                return StorageKind.Unknown;
+            }
+
+            var mediaType = (disk.MediaType ?? string.Empty).Trim();
+            var model = (disk.Model ?? string.Empty).Trim();
+            var interfaceType = (disk.InterfaceType ?? string.Empty).Trim();
+
+            var combined = $"{mediaType} {model} {interfaceType}".ToLowerInvariant();
+
+            if (string.IsNullOrWhiteSpace(mediaType) &&
+                string.IsNullOrWhiteSpace(model) &&
+                string.IsNullOrWhiteSpace(interfaceType))
+            {
+                return StorageKind.Unknown;
+            }
+
+            if (mediaType.IndexOf("nvme", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return StorageKind.Nvme;
+            }
+
+            if (!string.IsNullOrWhiteSpace(interfaceType) &&
+                interfaceType.IndexOf("pci", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                if (combined.Contains("ssd") ||
+                    combined.Contains("solid state") ||
+                    combined.Contains("non-volatile"))
+                {
+                    return StorageKind.Nvme;
+                }
+            }
+
+            if (combined.Contains("nvme") ||
+                combined.Contains("non-volatile memory express") ||
+                combined.Contains("pci express") ||
+                combined.Contains("pcie") ||
+                combined.Contains("pc i e"))
+            {
+                return StorageKind.Nvme;
+            }
+
+            if ((combined.Contains("m.2") || combined.Contains("m2")) &&
+                !combined.Contains("sata"))
+            {
+                return StorageKind.Nvme;
+            }
+
+            if (combined.Contains("sata") && combined.Contains("ssd"))
+            {
+                return StorageKind.SataSsd;
+            }
+
+            if (mediaType.IndexOf("sata", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                mediaType.IndexOf("ssd", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return StorageKind.SataSsd;
+            }
+
+            if (mediaType.Equals("SSD", StringComparison.OrdinalIgnoreCase) ||
+                mediaType.Equals("Solid State Disk", StringComparison.OrdinalIgnoreCase))
+            {
+                if (interfaceType.IndexOf("pci", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    return StorageKind.Nvme;
+                }
+
+                if (combined.Contains("sata"))
+                {
+                    return StorageKind.SataSsd;
+                }
+            }
+
+            if (combined.Contains("ssd"))
+            {
+                return StorageKind.SataSsd;
+            }
+
+            if (combined.Contains("hdd") ||
+                combined.Contains("hard disk") ||
+                combined.Contains("hard-disk"))
+            {
+                return StorageKind.Hdd;
+            }
+
+            if (mediaType.IndexOf("hdd", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return StorageKind.Hdd;
+            }
+
+            return StorageKind.Unknown;
+        }
+
+        private static SpecRatingLevel EvaluateSpecRating(
+            CpuSupportLevel cpuSupport,
+            bool hasCpuData,
+            double memoryGb,
+            bool hasMemoryData,
+            StorageKind storageKind,
+            bool hasDiskData)
+        {
+            if ((hasCpuData && cpuSupport == CpuSupportLevel.Unsupported) ||
+                (hasMemoryData && memoryGb > 0 && memoryGb <= 8) ||
+                (hasDiskData && storageKind == StorageKind.Hdd))
+            {
+                return SpecRatingLevel.Obsolete;
+            }
+
+            if (cpuSupport == CpuSupportLevel.Supported &&
+                hasMemoryData && hasDiskData &&
+                memoryGb >= 16 &&
+                storageKind == StorageKind.Nvme)
+            {
+                return SpecRatingLevel.Approved;
+            }
+
+            return SpecRatingLevel.Low;
+        }
+
+        private void ApplySpecRating(SpecRatingLevel level)
+        {
+            var excellentBackground = Color.FromArgb(209, 250, 229);
+            var excellentText = Color.FromArgb(6, 95, 70);
+
+            var moderateBackground = Color.FromArgb(254, 243, 199);
+            var moderateText = Color.FromArgb(146, 64, 14);
+
+            var poorBackground = Color.FromArgb(254, 226, 226);
+            var poorText = Color.FromArgb(153, 27, 27);
+
+            switch (level)
+            {
+                case SpecRatingLevel.Approved:
+                    lblSpecRatingValue.Text = "✅ High Performance";
+                    lblSpecRatingValue.BackColor = excellentBackground;
+                    lblSpecRatingValue.ForeColor = excellentText;
+                    break;
+                case SpecRatingLevel.Low:
+                    lblSpecRatingValue.Text = "⚠️ Standard Performance";
+                    lblSpecRatingValue.BackColor = moderateBackground;
+                    lblSpecRatingValue.ForeColor = moderateText;
+                    break;
+                case SpecRatingLevel.Obsolete:
+                    lblSpecRatingValue.Text = "❌ Low Performance";
+                    lblSpecRatingValue.BackColor = poorBackground;
+                    lblSpecRatingValue.ForeColor = poorText;
+                    break;
+                default:
+                    lblSpecRatingValue.Text = "ℹ️ Unknown";
+                    lblSpecRatingValue.BackColor = Color.LightGray;
+                    lblSpecRatingValue.ForeColor = Color.Black;
+                    break;
+            }
         }
 
         private static string BuildGpuText(IReadOnlyList<GpuInfo> gpus)
@@ -460,7 +732,7 @@ namespace CNSysInfo
 
         private void TakeAndSaveScreenshot(string filePath)
         {
-            Bitmap bitmap = null;
+            Bitmap? bitmap = null;
             try
             {
                 if (!TryCaptureUsingPrintWindow(Handle, out bitmap))
@@ -512,7 +784,7 @@ namespace CNSysInfo
             }
         }
 
-        private bool TryCaptureUsingPrintWindow(IntPtr hwnd, out Bitmap bitmap)
+        private bool TryCaptureUsingPrintWindow(IntPtr hwnd, out Bitmap? bitmap)
         {
             bitmap = null;
             if (hwnd == IntPtr.Zero)
@@ -557,8 +829,11 @@ namespace CNSysInfo
                 }
             }
 
-            bitmap.Dispose();
-            bitmap = null;
+            if (bitmap != null)
+            {
+                bitmap.Dispose();
+                bitmap = null;
+            }
             return false;
         }
 

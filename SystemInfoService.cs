@@ -17,6 +17,7 @@ namespace CNSysInfo
             var installedPhysicalMemory = (memoryInfo != null && !string.IsNullOrWhiteSpace(memoryInfo.InstalledMemory))
                 ? memoryInfo.InstalledMemory
                 : SafeExecute(GetInstalledPhysicalMemory, nameof(GetInstalledPhysicalMemory), "Unknown");
+            var cpuDescriptor = SafeExecute(GetCpuDescriptor, nameof(GetCpuDescriptor), new CpuDescriptor());
             
             // Core system info (fast queries)
             var snapshot = new SystemInfoSnapshot
@@ -30,7 +31,11 @@ namespace CNSysInfo
                 SerialNumber = SafeExecute(GetLaptopSerialNumber, nameof(GetLaptopSerialNumber), "Unknown"),
                 AssetTag = SafeExecute(GetAssetTag, nameof(GetAssetTag), "Unknown"),
                 BiosVersion = SafeExecute(GetBiosVersion, nameof(GetBiosVersion), "Unknown"),
-                Cpu = SafeExecute(GetCpuType, nameof(GetCpuType), "Unknown"),
+                Cpu = string.IsNullOrWhiteSpace(cpuDescriptor.Name) ? SafeExecute(GetCpuType, nameof(GetCpuType), "Unknown") : cpuDescriptor.Name,
+                CpuManufacturer = cpuDescriptor.Manufacturer,
+                CpuProcessorId = cpuDescriptor.ProcessorId,
+                CpuFamily = cpuDescriptor.Family,
+                CpuModel = cpuDescriptor.Model,
                 CpuCoreCount = SafeExecute(GetCpuCoreCount, nameof(GetCpuCoreCount), 0),
                 CpuLogicalProcessorCount = SafeExecute(GetCpuLogicalProcessorCount, nameof(GetCpuLogicalProcessorCount), 0),
                 InstalledPhysicalMemory = installedPhysicalMemory,
@@ -58,6 +63,31 @@ namespace CNSysInfo
         internal static string FormatTimeSpan(TimeSpan timeSpan)
         {
             return $"{timeSpan.Days} days, {timeSpan.Hours} hours, {timeSpan.Minutes} minutes, {timeSpan.Seconds} seconds";
+        }
+
+        private static int TryParseUnsigned(object value)
+        {
+            if (value == null)
+            {
+                return 0;
+            }
+
+            switch (value)
+            {
+                case ushort ushortValue:
+                    return ushortValue;
+                case uint uintValue:
+                    return (int)uintValue;
+                case int intValue when intValue >= 0:
+                    return intValue;
+            }
+
+            if (int.TryParse(value.ToString(), out var parsed) && parsed >= 0)
+            {
+                return parsed;
+            }
+
+            return 0;
         }
 
         private static string GetLaptopSerialNumber()
@@ -250,6 +280,28 @@ namespace CNSysInfo
             return "Unknown";
         }
 
+        private static CpuDescriptor GetCpuDescriptor()
+        {
+            using (var searcher = new ManagementObjectSearcher("SELECT Name, Manufacturer, ProcessorId, Family, Model FROM Win32_Processor"))
+            {
+                foreach (ManagementObject obj in searcher.Get())
+                {
+                    var descriptor = new CpuDescriptor
+                    {
+                        Name = obj["Name"] != null ? obj["Name"].ToString().Trim() : string.Empty,
+                        Manufacturer = obj["Manufacturer"] != null ? obj["Manufacturer"].ToString().Trim() : string.Empty,
+                        ProcessorId = obj["ProcessorId"] != null ? obj["ProcessorId"].ToString().Trim() : string.Empty,
+                        Family = TryParseUnsigned(obj["Family"]),
+                        Model = TryParseUnsigned(obj["Model"])
+                    };
+
+                    return descriptor;
+                }
+            }
+
+            return new CpuDescriptor();
+        }
+
         private static string GetCpuType()
         {
             using (var searcher = new ManagementObjectSearcher("SELECT Name FROM Win32_Processor"))
@@ -414,7 +466,8 @@ namespace CNSysInfo
                         Index = obj["Index"] != null ? obj["Index"].ToString() : string.Empty,
                         Model = model,
                         Size = sizeBytes == 0 ? "Unknown" : FormatBytes(sizeBytes),
-                        MediaType = DetermineDiskType(mediaType, model, interfaceType, pnpDeviceId, serialNumber, physicalDiskInfo)
+                        MediaType = DetermineDiskType(mediaType, model, interfaceType, pnpDeviceId, serialNumber, physicalDiskInfo),
+                        InterfaceType = interfaceType ?? string.Empty
                     });
                 }
             }
@@ -431,12 +484,28 @@ namespace CNSysInfo
             }
 
             var candidate = $"{mediaType} {model} {interfaceType} {pnpDeviceId}".ToLowerInvariant();
-            if (candidate.Contains("ssd") || candidate.Contains("solid-state") || candidate.Contains("solid state") || candidate.Contains("nvme") || candidate.Contains("pcie"))
+            if (candidate.Contains("nvme") ||
+                candidate.Contains("non-volatile memory express") ||
+                candidate.Contains("pcie") ||
+                candidate.Contains("pci express"))
             {
+                return "NVMe SSD";
+            }
+
+            if (candidate.Contains("ssd") || candidate.Contains("solid-state") || candidate.Contains("solid state"))
+            {
+                if (candidate.Contains("sata"))
+                {
+                    return "SATA SSD";
+                }
+
                 return "SSD";
             }
 
-            if (candidate.Contains("hdd") || candidate.Contains("hard disk") || candidate.Contains("hard-disk") || candidate.Contains("sata"))
+            if (candidate.Contains("hdd") ||
+                candidate.Contains("hard disk") ||
+                candidate.Contains("hard-disk") ||
+                (candidate.Contains("sata") && !candidate.Contains("ssd")))
             {
                 return "HDD";
             }
@@ -488,19 +557,27 @@ namespace CNSysInfo
 
         private static string MapPhysicalMediaType(int mediaType, int busType)
         {
+            const int StorageBusTypeSata = 11;
+            const int StorageBusTypeNvme = 17;
+
+            if (busType == StorageBusTypeNvme || busType == 8) // 8 kept for backward compatibility
+            {
+                return "NVMe SSD";
+            }
+
+            if (busType == StorageBusTypeSata && mediaType == 4)
+            {
+                return "SATA SSD";
+            }
+
             switch (mediaType)
             {
                 case 3:
                     return "HDD";
                 case 4:
-                    return "SSD";
+                    return busType == StorageBusTypeSata ? "SATA SSD" : "SSD";
                 case 5:
                     return "SCM";
-            }
-
-            if (busType == 8) // STORAGE_BUS_TYPE_NVME
-            {
-                return "SSD";
             }
 
             return "Unknown";
@@ -1311,6 +1388,10 @@ namespace CNSysInfo
             AssetTag = string.Empty;
             BiosVersion = string.Empty;
             Cpu = string.Empty;
+            CpuManufacturer = string.Empty;
+            CpuProcessorId = string.Empty;
+            CpuFamily = 0;
+            CpuModel = 0;
             CpuCoreCount = 0;
             CpuLogicalProcessorCount = 0;
             InstalledPhysicalMemory = string.Empty;
@@ -1336,6 +1417,10 @@ namespace CNSysInfo
         public string AssetTag { get; set; }
         public string BiosVersion { get; set; }
         public string Cpu { get; set; }
+        public string CpuManufacturer { get; set; }
+        public string CpuProcessorId { get; set; }
+        public int CpuFamily { get; set; }
+        public int CpuModel { get; set; }
         public int CpuCoreCount { get; set; }
         public int CpuLogicalProcessorCount { get; set; }
         public string InstalledPhysicalMemory { get; set; }
@@ -1358,6 +1443,24 @@ namespace CNSysInfo
         }
     }
 
+    internal sealed class CpuDescriptor
+    {
+        public CpuDescriptor()
+        {
+            Name = string.Empty;
+            Manufacturer = string.Empty;
+            ProcessorId = string.Empty;
+            Family = 0;
+            Model = 0;
+        }
+
+        public string Name { get; set; }
+        public string Manufacturer { get; set; }
+        public string ProcessorId { get; set; }
+        public int Family { get; set; }
+        public int Model { get; set; }
+    }
+
     internal sealed class DiskInfo
     {
         public DiskInfo()
@@ -1366,12 +1469,14 @@ namespace CNSysInfo
             Model = string.Empty;
             Size = string.Empty;
             MediaType = string.Empty;
+            InterfaceType = string.Empty;
         }
 
         public string Index { get; set; }
         public string Model { get; set; }
         public string Size { get; set; }
         public string MediaType { get; set; }
+        public string InterfaceType { get; set; }
     }
 
     internal sealed class GpuInfo

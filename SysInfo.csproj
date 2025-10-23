@@ -111,6 +111,7 @@
     <Compile Include="frmSysInfo.Designer.cs">
       <DependentUpon>frmSysInfo.cs</DependentUpon>
     </Compile>
+    <Compile Include="CpuSupportEvaluator.cs" />
     <Compile Include="SystemInfoService.cs" />
     <Compile Include="ClipboardHelper.cs" />
     <Compile Include="Program.cs" />
@@ -150,7 +151,6 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="info.ico" />
-    <Content Include="Logo Square.ico" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include=".NETFramework,Version=v4.7.2">
