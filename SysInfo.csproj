@@ -112,6 +112,10 @@
       <DependentUpon>frmSysInfo.cs</DependentUpon>
     </Compile>
     <Compile Include="CpuSupportEvaluator.cs" />
+    <Compile Include="IconHelper.cs" />
+    <Compile Include="modern_progressbar.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="SystemInfoService.cs" />
     <Compile Include="ClipboardHelper.cs" />
     <Compile Include="Program.cs" />

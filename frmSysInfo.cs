@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -16,8 +16,20 @@ namespace CNSysInfo
     public partial class frmSysInfo : Form
     {
         private SystemInfoSnapshot? _currentSnapshot;
-        private Rectangle _fixedBounds;
-        private bool _restoringDpiBounds;
+
+        // DPI Awareness P/Invoke declarations
+        [DllImport("user32.dll")]
+        private static extern bool SetProcessDPIAware();
+
+        [DllImport("SHCore.dll", SetLastError = true)]
+        private static extern int SetProcessDpiAwareness(PROCESS_DPI_AWARENESS awareness);
+
+        private enum PROCESS_DPI_AWARENESS
+        {
+            Process_DPI_Unaware = 0,
+            Process_System_DPI_Aware = 1,
+            Process_Per_Monitor_DPI_Aware = 2
+        }
 
         private enum SpecRatingLevel
         {
@@ -35,50 +47,60 @@ namespace CNSysInfo
             Hdd
         }
 
+        // P/Invoke for screenshot functionality
+        private const uint PW_RENDERFULLCONTENT = 0x00000002;
+        private const int DWMWA_EXTENDED_FRAME_BOUNDS = 9;
+
+        [DllImport("user32.dll")]
+        private static extern bool PrintWindow(IntPtr hwnd, IntPtr hdcBlt, uint nFlags);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmGetWindowAttribute(IntPtr hWnd, int dwAttribute, out RECT pvAttribute, int cbAttribute);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct RECT
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
+        }
+
         public frmSysInfo()
         {
+            // Setup DPI awareness BEFORE InitializeComponent
+            SetupDpiAwareness();
+            
             InitializeComponent();
         }
 
-        protected override void OnHandleCreated(EventArgs e)
+        private void SetupDpiAwareness()
         {
-            base.OnHandleCreated(e);
-            _fixedBounds = Bounds;
-        }
-
-        protected override void OnSizeChanged(EventArgs e)
-        {
-            base.OnSizeChanged(e);
-            if (!_restoringDpiBounds)
+            try
             {
-                _fixedBounds = Bounds;
+                // Try Windows 8.1 and later method first
+                SetProcessDpiAwareness(PROCESS_DPI_AWARENESS.Process_System_DPI_Aware);
+            }
+            catch
+            {
+                try
+                {
+                    // Fallback for Windows Vista through Windows 8
+                    SetProcessDPIAware();
+                }
+                catch
+                {
+                    // If both fail, continue without explicit DPI awareness
+                    Debug.WriteLine("[frmSysInfo] Could not set DPI awareness");
+                }
             }
         }
 
-        protected override void OnLocationChanged(EventArgs e)
-        {
-            base.OnLocationChanged(e);
-            if (!_restoringDpiBounds)
-            {
-                _fixedBounds = Bounds;
-            }
-        }
+        #region Event Handlers
 
-        protected override void WndProc(ref Message m)
-        {
-            const int WM_DPICHANGED = 0x02E0;
-
-            if (m.Msg == WM_DPICHANGED)
-            {
-                _restoringDpiBounds = true;
-                base.WndProc(ref m);
-                Bounds = _fixedBounds;
-                _restoringDpiBounds = false;
-                return;
-            }
-
-            base.WndProc(ref m);
-        }
         private void forceRestartOutlookToolStripMenuItem_Click(object sender, EventArgs e)
         {
             RunCmdCommand("TASKKILL /F /IM outlook.exe");
@@ -162,11 +184,13 @@ namespace CNSysInfo
 
         private void label9_Click(object sender, EventArgs e)
         {
-
+            // Empty event handler
         }
+
         private async void frmSysInfo_Load(object sender, EventArgs e)
         {
             lblversion.Text = "ELADWYSOFT SysInfo " + Application.ProductVersion;
+            
             // Show loading message
             textBox1.Text = "Loading system information, please wait...";
             txtOS.Text = "Loading...";
@@ -179,468 +203,6 @@ namespace CNSysInfo
             this.MaximumSize = Screen.PrimaryScreen.WorkingArea.Size;
 
             await LoadSystemInfoAsync();
-        }
-
-        private async Task LoadSystemInfoAsync()
-        {
-            Cursor = Cursors.WaitCursor;
-            menuStrip1.Enabled = false;
-            btnExport.Enabled = false;
-
-            try
-            {
-                var stopwatch = Stopwatch.StartNew();
-                var snapshot = await Task.Run(SystemInfoService.Collect);
-                stopwatch.Stop();
-                
-                Debug.WriteLine($"[{nameof(frmSysInfo)}] Data collection completed in {stopwatch.ElapsedMilliseconds}ms");
-                
-                _currentSnapshot = snapshot;
-                UpdateUi(snapshot);
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[{nameof(frmSysInfo)}] Failed to load system info: {ex}");
-                MessageBox.Show("Unable to load system information. Please try again.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            finally
-            {
-                menuStrip1.Enabled = true;
-                btnExport.Enabled = true;
-                Cursor = Cursors.Default;
-            }
-        }
-
-        private void UpdateUi(SystemInfoSnapshot snapshot)
-        {
-            // Basic Info
-            txtTimeZone.Text = $"Timezone: {snapshot.TimeZoneDisplayName} | Captured: {snapshot.CapturedAt:yyyy-MM-dd HH:mm:ss}";
-            txtPCName.Text = $"PC Name: {snapshot.MachineName}";
-            txtUserName.Text = $"Current user: {snapshot.UserName}";
-
-            // Hardware Info
-            txtSystemModel.Text = snapshot.SystemModel;
-            txtSerialNumber.Text = snapshot.SerialNumber;
-            txtManufacturer.Text = snapshot.Manufacturer;
-            var memoryText = $"{snapshot.InstalledPhysicalMemory} ({snapshot.UsablePhysicalMemory} usable)";
-            if (snapshot.MemorySlotsTotal > 0)
-            {
-                var usedSlots = snapshot.MemorySlotsUsed;
-                if (usedSlots < 0)
-                {
-                    usedSlots = 0;
-                }
-                if (usedSlots > snapshot.MemorySlotsTotal)
-                {
-                    usedSlots = snapshot.MemorySlotsTotal;
-                }
-
-                memoryText += $" | Slots: {usedSlots}/{snapshot.MemorySlotsTotal}";
-            }
-            if (snapshot.MemorySpeedMhz > 0)
-            {
-                memoryText += $" | Speed: {snapshot.MemorySpeedMhz} MHz";
-            }
-            txtMemory.Text = memoryText;
-            txtStorage.Text = BuildStorageText(snapshot.Disks);
-            txtCPU.Text = BuildCpuText(snapshot);
-            txtAssetTag.Text = snapshot.AssetTag;
-            txtGPU.Text = BuildGpuText(snapshot.Gpus);
-            txtScreenInfo.Text = BuildScreenText(snapshot.Monitors);
-            txtUptime.Text = $"Windows Uptime: {snapshot.WindowsUptimeDisplay}";
-
-            // Software Info
-            txtOS.Text = snapshot.OsDisplay;
-            txtBiosVersion.Text = snapshot.BiosVersion;
-            txtWinActivationStatus.Text = snapshot.WindowsActivationStatus;
-            txtBatteryHealth.Text = BuildBatteryText(snapshot.BatteryInfo);
-
-            UpdateSpecRating(snapshot);
-        }
-        
-        private static string BuildCpuText(SystemInfoSnapshot snapshot)
-        {
-            if (snapshot == null)
-            {
-                return "Unknown";
-            }
-
-            var cpuName = string.IsNullOrWhiteSpace(snapshot.Cpu) ? string.Empty : snapshot.Cpu.Trim();
-            var details = new List<string>();
-
-            if (snapshot.CpuCoreCount > 0)
-            {
-                details.Add($"Cores: {snapshot.CpuCoreCount}");
-            }
-
-            if (snapshot.CpuLogicalProcessorCount > 0)
-            {
-                details.Add($"Threads: {snapshot.CpuLogicalProcessorCount}");
-            }
-
-            if (string.IsNullOrEmpty(cpuName) && details.Count == 0)
-            {
-                return "Unknown";
-            }
-
-            if (details.Count == 0)
-            {
-                return cpuName;
-            }
-
-            if (string.IsNullOrEmpty(cpuName))
-            {
-                return string.Join(" | ", details);
-            }
-
-            return $"{cpuName} | {string.Join(" | ", details)}";
-        }
-        
-        private static string BuildBatteryText(BatteryInfo battery)
-        {
-            if (battery == null || battery.Status == "Not Detected")
-            {
-                return "No battery detected (Desktop PC).";
-            }
-
-            var healthText = battery.HealthPercentage > 0 ? $"{battery.HealthPercentage}%" : "Unknown";
-            var statusSuffix = string.IsNullOrWhiteSpace(battery.Status) ? string.Empty : $" - {battery.Status}";
-
-            var capacityDetails = new List<string>();
-            if (battery.DesignCapacity > 0)
-            {
-                capacityDetails.Add($"Design {FormatBatteryCapacity(battery.DesignCapacity)}");
-            }
-            if (battery.FullChargeCapacity > 0)
-            {
-                capacityDetails.Add($"Full {FormatBatteryCapacity(battery.FullChargeCapacity)}");
-            }
-
-            var capacitySuffix = capacityDetails.Count > 0 ? $" ({string.Join(", ", capacityDetails)})" : string.Empty;
-
-            return $"{healthText}{statusSuffix}{capacitySuffix}";
-        }
-
-        private static string BuildStorageText(IReadOnlyList<DiskInfo> disks)
-        {
-            if (disks == null || disks.Count == 0)
-            {
-                return "No disks detected.";
-            }
-
-            var builder = new StringBuilder();
-            foreach (var disk in disks)
-            {
-                builder.AppendLine($"Disk{disk.Index}: {disk.Model} | {disk.Size} | {disk.MediaType}");
-            }
-
-            return builder.ToString().TrimEnd();
-        }
-
-        private void UpdateSpecRating(SystemInfoSnapshot snapshot)
-        {
-            if (snapshot == null)
-            {
-                ApplySpecRating(SpecRatingLevel.Low);
-                return;
-            }
-
-            var cpuSupport = CpuSupportEvaluator.Evaluate(snapshot);
-            var memoryGb = ExtractMemoryInGigabytes(snapshot.InstalledPhysicalMemory);
-            var primaryDisk = ResolvePrimaryDisk(snapshot.Disks);
-            var storageKind = ClassifyStorageKind(primaryDisk);
-
-            var hasCpuData = cpuSupport != CpuSupportLevel.Unknown;
-            var hasMemoryData = memoryGb > 0;
-            var hasDiskData = storageKind != StorageKind.Unknown;
-
-            var level = EvaluateSpecRating(cpuSupport, hasCpuData, memoryGb, hasMemoryData, storageKind, hasDiskData);
-            ApplySpecRating(level);
-        }
-
-        private static double ExtractMemoryInGigabytes(string memoryDisplay)
-        {
-            return ExtractCapacityInGigabytes(memoryDisplay);
-        }
-
-        private static DiskInfo ResolvePrimaryDisk(IReadOnlyList<DiskInfo> disks)
-        {
-            if (disks == null || disks.Count == 0)
-            {
-                return null;
-            }
-
-            DiskInfo primary = null;
-            foreach (var disk in disks)
-            {
-                if (disk == null)
-                {
-                    continue;
-                }
-
-                if (!string.IsNullOrWhiteSpace(disk.Index) &&
-                    string.Equals(disk.Index.Trim(), "0", StringComparison.OrdinalIgnoreCase))
-                {
-                    return disk;
-                }
-
-                if (primary == null)
-                {
-                    primary = disk;
-                }
-            }
-
-            return primary;
-        }
-
-        private static double ExtractCapacityInGigabytes(string value)
-        {
-            if (string.IsNullOrWhiteSpace(value))
-            {
-                return -1;
-            }
-
-            var match = Regex.Match(value, @"([0-9]+(?:\.[0-9]+)?)\s*(TB|GB|MB)", RegexOptions.IgnoreCase);
-            if (!match.Success)
-            {
-                return -1;
-            }
-
-            if (!double.TryParse(match.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var numeric))
-            {
-                return -1;
-            }
-
-            var unit = match.Groups[2].Value.ToUpperInvariant();
-            switch (unit)
-            {
-                case "TB":
-                    return numeric * 1024;
-                case "GB":
-                    return numeric;
-                case "MB":
-                    return numeric / 1024;
-                default:
-                    return -1;
-            }
-        }
-
-        private static StorageKind ClassifyStorageKind(DiskInfo disk)
-        {
-            if (disk == null)
-            {
-                return StorageKind.Unknown;
-            }
-
-            var mediaType = (disk.MediaType ?? string.Empty).Trim();
-            var model = (disk.Model ?? string.Empty).Trim();
-            var interfaceType = (disk.InterfaceType ?? string.Empty).Trim();
-
-            var combined = $"{mediaType} {model} {interfaceType}".ToLowerInvariant();
-
-            if (string.IsNullOrWhiteSpace(mediaType) &&
-                string.IsNullOrWhiteSpace(model) &&
-                string.IsNullOrWhiteSpace(interfaceType))
-            {
-                return StorageKind.Unknown;
-            }
-
-            if (mediaType.IndexOf("nvme", StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                return StorageKind.Nvme;
-            }
-
-            if (!string.IsNullOrWhiteSpace(interfaceType) &&
-                interfaceType.IndexOf("pci", StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                if (combined.Contains("ssd") ||
-                    combined.Contains("solid state") ||
-                    combined.Contains("non-volatile"))
-                {
-                    return StorageKind.Nvme;
-                }
-            }
-
-            if (combined.Contains("nvme") ||
-                combined.Contains("non-volatile memory express") ||
-                combined.Contains("pci express") ||
-                combined.Contains("pcie") ||
-                combined.Contains("pc i e"))
-            {
-                return StorageKind.Nvme;
-            }
-
-            if ((combined.Contains("m.2") || combined.Contains("m2")) &&
-                !combined.Contains("sata"))
-            {
-                return StorageKind.Nvme;
-            }
-
-            if (combined.Contains("sata") && combined.Contains("ssd"))
-            {
-                return StorageKind.SataSsd;
-            }
-
-            if (mediaType.IndexOf("sata", StringComparison.OrdinalIgnoreCase) >= 0 &&
-                mediaType.IndexOf("ssd", StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                return StorageKind.SataSsd;
-            }
-
-            if (mediaType.Equals("SSD", StringComparison.OrdinalIgnoreCase) ||
-                mediaType.Equals("Solid State Disk", StringComparison.OrdinalIgnoreCase))
-            {
-                if (interfaceType.IndexOf("pci", StringComparison.OrdinalIgnoreCase) >= 0)
-                {
-                    return StorageKind.Nvme;
-                }
-
-                if (combined.Contains("sata"))
-                {
-                    return StorageKind.SataSsd;
-                }
-            }
-
-            if (combined.Contains("ssd"))
-            {
-                return StorageKind.SataSsd;
-            }
-
-            if (combined.Contains("hdd") ||
-                combined.Contains("hard disk") ||
-                combined.Contains("hard-disk"))
-            {
-                return StorageKind.Hdd;
-            }
-
-            if (mediaType.IndexOf("hdd", StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                return StorageKind.Hdd;
-            }
-
-            return StorageKind.Unknown;
-        }
-
-        private static SpecRatingLevel EvaluateSpecRating(
-            CpuSupportLevel cpuSupport,
-            bool hasCpuData,
-            double memoryGb,
-            bool hasMemoryData,
-            StorageKind storageKind,
-            bool hasDiskData)
-        {
-            if ((hasCpuData && cpuSupport == CpuSupportLevel.Unsupported) ||
-                (hasMemoryData && memoryGb > 0 && memoryGb <= 8) ||
-                (hasDiskData && storageKind == StorageKind.Hdd))
-            {
-                return SpecRatingLevel.Obsolete;
-            }
-
-            if (cpuSupport == CpuSupportLevel.Supported &&
-                hasMemoryData && hasDiskData &&
-                memoryGb >= 16 &&
-                storageKind == StorageKind.Nvme)
-            {
-                return SpecRatingLevel.Approved;
-            }
-
-            return SpecRatingLevel.Low;
-        }
-
-        private void ApplySpecRating(SpecRatingLevel level)
-        {
-            var excellentBackground = Color.FromArgb(209, 250, 229);
-            var excellentText = Color.FromArgb(6, 95, 70);
-
-            var moderateBackground = Color.FromArgb(254, 243, 199);
-            var moderateText = Color.FromArgb(146, 64, 14);
-
-            var poorBackground = Color.FromArgb(254, 226, 226);
-            var poorText = Color.FromArgb(153, 27, 27);
-
-            switch (level)
-            {
-                case SpecRatingLevel.Approved:
-                    lblSpecRatingValue.Text = "✅ High Performance";
-                    lblSpecRatingValue.BackColor = excellentBackground;
-                    lblSpecRatingValue.ForeColor = excellentText;
-                    break;
-                case SpecRatingLevel.Low:
-                    lblSpecRatingValue.Text = "⚠️ Standard Performance";
-                    lblSpecRatingValue.BackColor = moderateBackground;
-                    lblSpecRatingValue.ForeColor = moderateText;
-                    break;
-                case SpecRatingLevel.Obsolete:
-                    lblSpecRatingValue.Text = "❌ Low Performance";
-                    lblSpecRatingValue.BackColor = poorBackground;
-                    lblSpecRatingValue.ForeColor = poorText;
-                    break;
-                default:
-                    lblSpecRatingValue.Text = "ℹ️ Unknown";
-                    lblSpecRatingValue.BackColor = Color.LightGray;
-                    lblSpecRatingValue.ForeColor = Color.Black;
-                    break;
-            }
-        }
-
-        private static string BuildGpuText(IReadOnlyList<GpuInfo> gpus)
-        {
-            if (gpus == null || gpus.Count == 0)
-            {
-                return "No GPUs detected.";
-            }
-
-            var builder = new StringBuilder();
-            for (var index = 0; index < gpus.Count; index++)
-            {
-                var gpu = gpus[index];
-                builder.AppendLine($"GPU{index + 1}: {gpu.Name} | VRAM: {gpu.AdapterRam}");
-            }
-
-            return builder.ToString().TrimEnd();
-        }
-
-        private static string BuildScreenText(IReadOnlyList<MonitorInfo> monitors)
-        {
-            if (monitors == null || monitors.Count == 0)
-            {
-                return "No monitors detected.";
-            }
-
-            var builder = new StringBuilder();
-            for (var index = 0; index < monitors.Count; index++)
-            {
-                var monitor = monitors[index];
-                var parts = new List<string>();
-                
-                if (!string.IsNullOrWhiteSpace(monitor.ScreenSize))
-                {
-                    parts.Add(monitor.ScreenSize);
-                }
-                
-                if (!string.IsNullOrWhiteSpace(monitor.RefreshRate))
-                {
-                    parts.Add($"Refresh: {monitor.RefreshRate}");
-                }
-                
-                if (!string.IsNullOrWhiteSpace(monitor.Resolution))
-                {
-                    parts.Add($"Resolution: {monitor.Resolution}");
-                }
-                
-                parts.Add($"Touch: {(monitor.IsTouchScreen ? "Yes" : "No")}");
-                
-                if (parts.Count > 0)
-                {
-                    builder.AppendLine($"Monitor{index + 1}: {string.Join(" | ", parts)}");
-                }
-                else
-                {
-                    builder.AppendLine($"Monitor{index + 1}: {monitor.Name}");
-                }
-            }
-
-            return builder.ToString().TrimEnd();
         }
 
         private async void btnExport_Click(object sender, EventArgs e)
@@ -676,6 +238,403 @@ namespace CNSysInfo
             }
         }
 
+        #endregion
+
+        #region System Info Loading
+
+        private async Task LoadSystemInfoAsync()
+        {
+            Cursor = Cursors.WaitCursor;
+            menuStrip1.Enabled = false;
+            btnExport.Enabled = false;
+
+            try
+            {
+                var stopwatch = Stopwatch.StartNew();
+                var snapshot = await Task.Run(SystemInfoService.Collect);
+                stopwatch.Stop();
+                
+                Debug.WriteLine($"[{nameof(frmSysInfo)}] Data collection completed in {stopwatch.ElapsedMilliseconds}ms");
+                
+                _currentSnapshot = snapshot;
+                UpdateUi(snapshot);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[{nameof(frmSysInfo)}] Failed to load system info: {ex}");
+                MessageBox.Show("Unable to load system information. Please try again.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                Cursor = Cursors.Default;
+                menuStrip1.Enabled = true;
+                btnExport.Enabled = true;
+            }
+        }
+
+        #endregion
+
+        #region UI Update
+
+        private void UpdateUi(SystemInfoSnapshot snapshot)
+        {
+            // Basic Info
+            txtTimeZone.Text = $"Timezone: {snapshot.TimeZoneDisplayName} | Captured: {snapshot.CapturedAt:yyyy-MM-dd HH:mm:ss}";
+            txtPCName.Text = $"PC Name: {snapshot.MachineName}";
+            txtUserName.Text = $"Current user: {snapshot.UserName}";
+
+            // Hardware Info
+            txtSystemModel.Text = snapshot.SystemModel;
+            txtSerialNumber.Text = snapshot.SerialNumber;
+            txtManufacturer.Text = snapshot.Manufacturer;
+            
+            var memoryText = $"{snapshot.InstalledPhysicalMemory} ({snapshot.UsablePhysicalMemory} usable)";
+            if (snapshot.MemorySlotsTotal > 0)
+            {
+                var usedSlots = snapshot.MemorySlotsUsed;
+                if (usedSlots < 0)
+                    usedSlots = 0;
+                if (usedSlots > snapshot.MemorySlotsTotal)
+                    usedSlots = snapshot.MemorySlotsTotal;
+
+                memoryText += $" | Slots: {usedSlots}/{snapshot.MemorySlotsTotal}";
+            }
+            if (snapshot.MemorySpeedMhz > 0)
+            {
+                memoryText += $" | Speed: {snapshot.MemorySpeedMhz} MHz";
+            }
+            
+            txtMemory.Text = memoryText;
+            txtStorage.Text = BuildStorageText(snapshot.Disks);
+            txtCPU.Text = BuildCpuText(snapshot);
+            txtAssetTag.Text = snapshot.AssetTag;
+            txtGPU.Text = BuildGpuText(snapshot.Gpus);
+            txtScreenInfo.Text = BuildScreenText(snapshot.Monitors);
+            txtUptime.Text = $"Windows Uptime: {snapshot.WindowsUptimeDisplay}";
+
+            // Software Info
+            txtOS.Text = snapshot.OsDisplay;
+            txtBiosVersion.Text = snapshot.BiosVersion;
+            txtWinActivationStatus.Text = snapshot.WindowsActivationStatus;
+            txtBatteryHealth.Text = BuildBatteryText(snapshot.BatteryInfo);
+
+            UpdateSpecRating(snapshot);
+        }
+
+        private static string BuildCpuText(SystemInfoSnapshot snapshot)
+        {
+            if (snapshot == null)
+                return "Unknown";
+
+            var cpuName = string.IsNullOrWhiteSpace(snapshot.Cpu) ? string.Empty : snapshot.Cpu.Trim();
+            var details = new List<string>();
+
+            if (snapshot.CpuCoreCount > 0)
+                details.Add($"Cores: {snapshot.CpuCoreCount}");
+
+            if (snapshot.CpuLogicalProcessorCount > 0)
+                details.Add($"Threads: {snapshot.CpuLogicalProcessorCount}");
+
+            if (string.IsNullOrEmpty(cpuName) && details.Count == 0)
+                return "Unknown";
+
+            if (details.Count == 0)
+                return cpuName;
+
+            if (string.IsNullOrEmpty(cpuName))
+                return string.Join(" | ", details);
+
+            return $"{cpuName} | {string.Join(" | ", details)}";
+        }
+
+        private static string BuildBatteryText(BatteryInfo battery)
+        {
+            if (battery == null || battery.Status == "Not Detected")
+                return "No battery detected (Desktop PC).";
+
+            var healthText = battery.HealthPercentage > 0 ? $"{battery.HealthPercentage}%" : "Unknown";
+            var statusSuffix = string.IsNullOrWhiteSpace(battery.Status) ? string.Empty : $" - {battery.Status}";
+
+            var capacityDetails = new List<string>();
+            if (battery.DesignCapacity > 0)
+                capacityDetails.Add($"Design {FormatBatteryCapacity(battery.DesignCapacity)}");
+            if (battery.FullChargeCapacity > 0)
+                capacityDetails.Add($"Full {FormatBatteryCapacity(battery.FullChargeCapacity)}");
+
+            var capacitySuffix = capacityDetails.Count > 0 ? $" ({string.Join(", ", capacityDetails)})" : string.Empty;
+
+            return $"{healthText}{statusSuffix}{capacitySuffix}";
+        }
+
+        private static string BuildStorageText(IReadOnlyList<DiskInfo> disks)
+        {
+            if (disks == null || disks.Count == 0)
+                return "No disks detected.";
+
+            var builder = new StringBuilder();
+            foreach (var disk in disks)
+            {
+                builder.AppendLine($"Disk{disk.Index}: {disk.Model} | {disk.Size} | {disk.MediaType}");
+            }
+
+            return builder.ToString().TrimEnd();
+        }
+
+        private static string BuildGpuText(IReadOnlyList<GpuInfo> gpus)
+        {
+            if (gpus == null || gpus.Count == 0)
+                return "No GPUs detected.";
+
+            var builder = new StringBuilder();
+            for (var index = 0; index < gpus.Count; index++)
+            {
+                var gpu = gpus[index];
+                builder.AppendLine($"GPU{index + 1}: {gpu.Name} | VRAM: {gpu.AdapterRam}");
+            }
+
+            return builder.ToString().TrimEnd();
+        }
+
+        private static string BuildScreenText(IReadOnlyList<MonitorInfo> monitors)
+        {
+            if (monitors == null || monitors.Count == 0)
+                return "No monitors detected.";
+
+            var builder = new StringBuilder();
+            for (var index = 0; index < monitors.Count; index++)
+            {
+                var monitor = monitors[index];
+                var parts = new List<string>();
+                
+                if (!string.IsNullOrWhiteSpace(monitor.ScreenSize))
+                    parts.Add(monitor.ScreenSize);
+                
+                if (!string.IsNullOrWhiteSpace(monitor.RefreshRate))
+                    parts.Add($"Refresh: {monitor.RefreshRate}");
+                
+                if (!string.IsNullOrWhiteSpace(monitor.Resolution))
+                    parts.Add($"Resolution: {monitor.Resolution}");
+                
+                parts.Add($"Touch: {(monitor.IsTouchScreen ? "Yes" : "No")}");
+                
+                if (parts.Count > 0)
+                    builder.AppendLine($"Monitor{index + 1}: {string.Join(" | ", parts)}");
+                else
+                    builder.AppendLine($"Monitor{index + 1}: {monitor.Name}");
+            }
+
+            return builder.ToString().TrimEnd();
+        }
+
+        private static string FormatBatteryCapacity(int capacity)
+        {
+            return capacity > 0 ? string.Format("{0:N0} mWh", capacity) : "Unknown";
+        }
+
+        #endregion
+
+        #region Spec Rating
+
+        private void UpdateSpecRating(SystemInfoSnapshot snapshot)
+        {
+            if (snapshot == null)
+            {
+                ApplySpecRating(SpecRatingLevel.Low);
+                return;
+            }
+
+            var cpuSupport = CpuSupportEvaluator.Evaluate(snapshot);
+            var memoryGb = ExtractMemoryInGigabytes(snapshot.InstalledPhysicalMemory);
+            var primaryDisk = ResolvePrimaryDisk(snapshot.Disks);
+            var storageKind = ClassifyStorageKind(primaryDisk);
+
+            var hasCpuData = cpuSupport != CpuSupportLevel.Unknown;
+            var hasMemoryData = memoryGb > 0;
+            var hasDiskData = storageKind != StorageKind.Unknown;
+
+            var level = EvaluateSpecRating(cpuSupport, hasCpuData, memoryGb, hasMemoryData, storageKind, hasDiskData);
+            ApplySpecRating(level);
+        }
+
+        private static double ExtractMemoryInGigabytes(string memoryDisplay)
+        {
+            return ExtractCapacityInGigabytes(memoryDisplay);
+        }
+
+        private static DiskInfo ResolvePrimaryDisk(IReadOnlyList<DiskInfo> disks)
+        {
+            if (disks == null || disks.Count == 0)
+                return null;
+
+            DiskInfo primary = null;
+            foreach (var disk in disks)
+            {
+                if (disk == null)
+                    continue;
+
+                if (!string.IsNullOrWhiteSpace(disk.Index) &&
+                    string.Equals(disk.Index.Trim(), "0", StringComparison.OrdinalIgnoreCase))
+                {
+                    return disk;
+                }
+
+                if (primary == null)
+                    primary = disk;
+            }
+
+            return primary;
+        }
+
+        private static double ExtractCapacityInGigabytes(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return -1;
+
+            var match = Regex.Match(value, @"([0-9]+(?:\.[0-9]+)?)\s*(TB|GB|MB)", RegexOptions.IgnoreCase);
+            if (!match.Success)
+                return -1;
+
+            if (!double.TryParse(match.Groups[1].Value, NumberStyles.Float, CultureInfo.InvariantCulture, out var numeric))
+                return -1;
+
+            var unit = match.Groups[2].Value.ToUpperInvariant();
+            switch (unit)
+            {
+                case "TB":
+                    return numeric * 1024;
+                case "GB":
+                    return numeric;
+                case "MB":
+                    return numeric / 1024;
+                default:
+                    return -1;
+            }
+        }
+
+        private static StorageKind ClassifyStorageKind(DiskInfo disk)
+        {
+            if (disk == null)
+                return StorageKind.Unknown;
+
+            var mediaType = (disk.MediaType ?? string.Empty).Trim();
+            var model = (disk.Model ?? string.Empty).Trim();
+            var interfaceType = (disk.InterfaceType ?? string.Empty).Trim();
+            var combined = $"{mediaType} {model} {interfaceType}".ToLowerInvariant();
+
+            if (string.IsNullOrWhiteSpace(mediaType) &&
+                string.IsNullOrWhiteSpace(model) &&
+                string.IsNullOrWhiteSpace(interfaceType))
+            {
+                return StorageKind.Unknown;
+            }
+
+            if (mediaType.IndexOf("nvme", StringComparison.OrdinalIgnoreCase) >= 0)
+                return StorageKind.Nvme;
+
+            if (!string.IsNullOrWhiteSpace(interfaceType) &&
+                interfaceType.IndexOf("pci", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                if (combined.Contains("ssd") || combined.Contains("solid state") || combined.Contains("non-volatile"))
+                    return StorageKind.Nvme;
+            }
+
+            if (combined.Contains("nvme") || combined.Contains("non-volatile memory express") ||
+                combined.Contains("pci express") || combined.Contains("pcie") || combined.Contains("pc i e"))
+            {
+                return StorageKind.Nvme;
+            }
+
+            if ((combined.Contains("m.2") || combined.Contains("m2")) && !combined.Contains("sata"))
+                return StorageKind.Nvme;
+
+            if (combined.Contains("sata") && combined.Contains("ssd"))
+                return StorageKind.SataSsd;
+
+            if (mediaType.IndexOf("sata", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                mediaType.IndexOf("ssd", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return StorageKind.SataSsd;
+            }
+
+            if ((mediaType.Equals("SSD", StringComparison.OrdinalIgnoreCase) ||
+                mediaType.Equals("Solid State Disk", StringComparison.OrdinalIgnoreCase)))
+            {
+                if (interfaceType.IndexOf("pci", StringComparison.OrdinalIgnoreCase) >= 0)
+                    return StorageKind.Nvme;
+
+                if (combined.Contains("sata"))
+                    return StorageKind.SataSsd;
+            }
+
+            if (combined.Contains("ssd"))
+                return StorageKind.SataSsd;
+
+            if (combined.Contains("hdd") || combined.Contains("hard disk") || combined.Contains("hard-disk"))
+                return StorageKind.Hdd;
+
+            if (mediaType.IndexOf("hdd", StringComparison.OrdinalIgnoreCase) >= 0)
+                return StorageKind.Hdd;
+
+            return StorageKind.Unknown;
+        }
+
+        private static SpecRatingLevel EvaluateSpecRating(
+            CpuSupportLevel cpuSupport,
+            bool hasCpuData,
+            double memoryGb,
+            bool hasMemoryData,
+            StorageKind storageKind,
+            bool hasDiskData)
+        {
+            if ((hasCpuData && cpuSupport == CpuSupportLevel.Unsupported) ||
+                (hasMemoryData && memoryGb > 0 && memoryGb <= 8) ||
+                (hasDiskData && storageKind == StorageKind.Hdd))
+            {
+                return SpecRatingLevel.Obsolete;
+            }
+
+            if (cpuSupport == CpuSupportLevel.Supported &&
+                hasMemoryData && hasDiskData &&
+                memoryGb >= 16 &&
+                storageKind == StorageKind.Nvme)
+            {
+                return SpecRatingLevel.Approved;
+            }
+
+            return SpecRatingLevel.Low;
+        }
+
+        private void ApplySpecRating(SpecRatingLevel level)
+        {
+            switch (level)
+            {
+                case SpecRatingLevel.Approved:
+                    lblSpecRatingValue.Text = "Approved for Modern Work";
+                    lblSpecRatingValue.BackColor = Color.FromArgb(144, 238, 144);
+                    lblSpecRatingValue.ForeColor = Color.DarkGreen;
+                    break;
+                case SpecRatingLevel.Low:
+                    lblSpecRatingValue.Text = "Low - Consider Upgrade";
+                    lblSpecRatingValue.BackColor = Color.FromArgb(255, 255, 153);
+                    lblSpecRatingValue.ForeColor = Color.DarkOrange;
+                    break;
+                case SpecRatingLevel.Obsolete:
+                    lblSpecRatingValue.Text = "Obsolete - Upgrade Recommended";
+                    lblSpecRatingValue.BackColor = Color.FromArgb(255, 182, 193);
+                    lblSpecRatingValue.ForeColor = Color.DarkRed;
+                    break;
+                default:
+                    lblSpecRatingValue.Text = "Unable to determine";
+                    lblSpecRatingValue.BackColor = Color.LightGray;
+                    lblSpecRatingValue.ForeColor = Color.Black;
+                    break;
+            }
+        }
+
+        #endregion
+
+        #region Export and Screenshot
+
         private static void SaveSnapshotToFile(SystemInfoSnapshot snapshot, string filePath)
         {
             var builder = new StringBuilder();
@@ -705,6 +664,7 @@ namespace CNSysInfo
             builder.AppendLine($"Asset Tag: {snapshot.AssetTag}");
             builder.AppendLine($"BIOS Version: {snapshot.BiosVersion}");
             builder.AppendLine($"CPU: {BuildCpuText(snapshot)}");
+            
             var memoryLine = $"{snapshot.InstalledPhysicalMemory} ({snapshot.UsablePhysicalMemory} usable)";
             if (snapshot.MemorySlotsTotal > 0)
             {
@@ -716,9 +676,8 @@ namespace CNSysInfo
                 memoryLine += $" | Slots: {usedSlots}/{snapshot.MemorySlotsTotal}";
             }
             if (snapshot.MemorySpeedMhz > 0)
-            {
                 memoryLine += $" | Speed: {snapshot.MemorySpeedMhz} MHz";
-            }
+            
             builder.AppendLine($"Memory: {memoryLine}");
             builder.AppendLine();
             
@@ -748,13 +707,9 @@ namespace CNSysInfo
                     : "Unknown";
                 builder.AppendLine($"Health: {healthText}");
                 if (snapshot.BatteryInfo.DesignCapacity > 0)
-                {
                     builder.AppendLine($"Design Capacity: {FormatBatteryCapacity(snapshot.BatteryInfo.DesignCapacity)}");
-                }
                 if (snapshot.BatteryInfo.FullChargeCapacity > 0)
-                {
                     builder.AppendLine($"Full Charge Capacity: {FormatBatteryCapacity(snapshot.BatteryInfo.FullChargeCapacity)}");
-                }
                 builder.AppendLine($"Status: {snapshot.BatteryInfo.Status}");
                 builder.AppendLine($"Power: {snapshot.BatteryInfo.PowerStatus}");
                 builder.AppendLine();
@@ -784,9 +739,7 @@ namespace CNSysInfo
                 }
 
                 if (bitmap == null)
-                {
                     throw new InvalidOperationException("Unable to capture window image.");
-                }
 
                 bitmap.Save(filePath, ImageFormat.Png);
             }
@@ -830,14 +783,10 @@ namespace CNSysInfo
         {
             bitmap = null;
             if (hwnd == IntPtr.Zero)
-            {
                 return false;
-            }
 
             if (!GetWindowRect(hwnd, out var rect))
-            {
                 return false;
-            }
 
             rect = NormalizeWindowRect(hwnd, rect);
 
@@ -845,9 +794,7 @@ namespace CNSysInfo
             var height = rect.Bottom - rect.Top;
 
             if (width <= 0 || height <= 0)
-            {
                 return false;
-            }
 
             bitmap = new Bitmap(width, height, PixelFormat.Format32bppArgb);
             using (var graphics = Graphics.FromImage(bitmap))
@@ -856,14 +803,10 @@ namespace CNSysInfo
                 try
                 {
                     if (PrintWindow(hwnd, hdc, PW_RENDERFULLCONTENT))
-                    {
                         return true;
-                    }
 
                     if (PrintWindow(hwnd, hdc, 0))
-                    {
                         return true;
-                    }
                 }
                 finally
                 {
@@ -886,22 +829,24 @@ namespace CNSysInfo
                 if (Environment.OSVersion.Version.Major >= 6)
                 {
                     if (DwmGetWindowAttribute(hwnd, DWMWA_EXTENDED_FRAME_BOUNDS, out var dwmRect, Marshal.SizeOf(typeof(RECT))) == 0)
-                    {
                         return dwmRect;
-                    }
                 }
             }
             catch (DllNotFoundException)
             {
-                // DWM not available on this OS (e.g., Server Core); fall back to standard rect.
+                // DWM not available on this OS
             }
             catch (EntryPointNotFoundException)
             {
-                // Attribute unavailable; ignore and return original rect.
+                // Attribute unavailable
             }
 
             return rect;
         }
+
+        #endregion
+
+        #region Command Execution
 
         private void RunCmdCommand(string command)
         {
@@ -930,49 +875,19 @@ namespace CNSysInfo
                     process.WaitForExit();
 
                     if (!string.IsNullOrWhiteSpace(output))
-                    {
                         Debug.WriteLine($"Command '{command}' output:{Environment.NewLine}{output}");
-                    }
 
                     if (!string.IsNullOrWhiteSpace(error))
-                    {
                         Debug.WriteLine($"Command '{command}' error:{Environment.NewLine}{error}");
-                    }
                 }
             }
             catch (Exception ex)
             {
-            Debug.WriteLine($"[{nameof(frmSysInfo)}] Command '{command}' failed: {ex}");
-            MessageBox.Show("Error executing command. Check logs for details.", "Command Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Debug.WriteLine($"[{nameof(frmSysInfo)}] Command '{command}' failed: {ex}");
+                MessageBox.Show("Error executing command. Check logs for details.", "Command Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
-        private const uint PW_RENDERFULLCONTENT = 0x00000002;
-        private const int DWMWA_EXTENDED_FRAME_BOUNDS = 9;
-
-        [DllImport("user32.dll")]
-        private static extern bool PrintWindow(IntPtr hwnd, IntPtr hdcBlt, uint nFlags);
-
-        [DllImport("user32.dll", SetLastError = true)]
-        private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
-
-        [DllImport("dwmapi.dll")]
-        private static extern int DwmGetWindowAttribute(IntPtr hWnd, int dwAttribute, out RECT pvAttribute, int cbAttribute);
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct RECT
-        {
-            public int Left;
-            public int Top;
-            public int Right;
-            public int Bottom;
-        }
-
-        private static string FormatBatteryCapacity(int capacity)
-        {
-            return capacity > 0 ? string.Format("{0:N0} mWh", capacity) : "Unknown";
-        }
-
+        #endregion
     }
 }
-
