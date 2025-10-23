@@ -16,7 +16,8 @@ namespace CNSysInfo
     public partial class frmSysInfo : Form
     {
         private SystemInfoSnapshot? _currentSnapshot;
-        private bool _initialScalingApplied;
+        private Rectangle _fixedBounds;
+        private bool _restoringDpiBounds;
 
         private enum SpecRatingLevel
         {
@@ -37,27 +38,47 @@ namespace CNSysInfo
         public frmSysInfo()
         {
             InitializeComponent();
-            AutoScaleMode = AutoScaleMode.Dpi;
-            AutoScaleDimensions = new SizeF(96f, 96f);
         }
 
         protected override void OnHandleCreated(EventArgs e)
         {
             base.OnHandleCreated(e);
+            _fixedBounds = Bounds;
+        }
 
-            if (_initialScalingApplied || DesignMode)
+        protected override void OnSizeChanged(EventArgs e)
+        {
+            base.OnSizeChanged(e);
+            if (!_restoringDpiBounds)
             {
-                return;
-            }
-
-            _initialScalingApplied = true;
-
-            if (AutoScaleMode != AutoScaleMode.None)
-            {
-                PerformAutoScale();
+                _fixedBounds = Bounds;
             }
         }
 
+        protected override void OnLocationChanged(EventArgs e)
+        {
+            base.OnLocationChanged(e);
+            if (!_restoringDpiBounds)
+            {
+                _fixedBounds = Bounds;
+            }
+        }
+
+        protected override void WndProc(ref Message m)
+        {
+            const int WM_DPICHANGED = 0x02E0;
+
+            if (m.Msg == WM_DPICHANGED)
+            {
+                _restoringDpiBounds = true;
+                base.WndProc(ref m);
+                Bounds = _fixedBounds;
+                _restoringDpiBounds = false;
+                return;
+            }
+
+            base.WndProc(ref m);
+        }
         private void forceRestartOutlookToolStripMenuItem_Click(object sender, EventArgs e)
         {
             RunCmdCommand("TASKKILL /F /IM outlook.exe");
