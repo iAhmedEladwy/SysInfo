@@ -672,14 +672,14 @@ namespace CNSysInfo
             // 
             this.pbBattery.Font = new System.Drawing.Font("Segoe UI", 8F);
             this.pbBattery.ForeColor = System.Drawing.Color.Black;
-            this.pbBattery.Location = new System.Drawing.Point(125, 378);
+            this.pbBattery.Location = new System.Drawing.Point(128, 378);
             this.pbBattery.Margin = new System.Windows.Forms.Padding(4);
             this.pbBattery.Maximum = 100;
             this.pbBattery.Name = "pbBattery";
             this.pbBattery.ProgressBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(240)))), ((int)(((byte)(240)))));
             this.pbBattery.ProgressColor = System.Drawing.Color.FromArgb(((int)(((byte)(16)))), ((int)(((byte)(185)))), ((int)(((byte)(129)))));
             this.pbBattery.ShowPercentage = true;
-            this.pbBattery.Size = new System.Drawing.Size(606, 15);
+            this.pbBattery.Size = new System.Drawing.Size(600, 15);
             this.pbBattery.TabIndex = 27;
             this.pbBattery.Value = 0;
             // 
@@ -687,14 +687,14 @@ namespace CNSysInfo
             // 
             this.pbStorage.Font = new System.Drawing.Font("Segoe UI", 8F);
             this.pbStorage.ForeColor = System.Drawing.Color.Black;
-            this.pbStorage.Location = new System.Drawing.Point(125, 453);
+            this.pbStorage.Location = new System.Drawing.Point(128, 453);
             this.pbStorage.Margin = new System.Windows.Forms.Padding(4);
             this.pbStorage.Maximum = 100;
             this.pbStorage.Name = "pbStorage";
             this.pbStorage.ProgressBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(240)))), ((int)(((byte)(240)))));
             this.pbStorage.ProgressColor = System.Drawing.Color.FromArgb(((int)(((byte)(16)))), ((int)(((byte)(185)))), ((int)(((byte)(129)))));
             this.pbStorage.ShowPercentage = true;
-            this.pbStorage.Size = new System.Drawing.Size(606, 15);
+            this.pbStorage.Size = new System.Drawing.Size(600, 15);
             this.pbStorage.TabIndex = 28;
             this.pbStorage.Value = 0;
             // 
@@ -702,14 +702,14 @@ namespace CNSysInfo
             // 
             this.pbMemory.Font = new System.Drawing.Font("Segoe UI", 8F);
             this.pbMemory.ForeColor = System.Drawing.Color.Black;
-            this.pbMemory.Location = new System.Drawing.Point(125, 326);
+            this.pbMemory.Location = new System.Drawing.Point(128, 326);
             this.pbMemory.Margin = new System.Windows.Forms.Padding(4);
             this.pbMemory.Maximum = 100;
             this.pbMemory.Name = "pbMemory";
             this.pbMemory.ProgressBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(240)))), ((int)(((byte)(240)))));
             this.pbMemory.ProgressColor = System.Drawing.Color.FromArgb(((int)(((byte)(139)))), ((int)(((byte)(92)))), ((int)(((byte)(246)))));
             this.pbMemory.ShowPercentage = true;
-            this.pbMemory.Size = new System.Drawing.Size(606, 15);
+            this.pbMemory.Size = new System.Drawing.Size(600, 15);
             this.pbMemory.TabIndex = 29;
             this.pbMemory.Value = 0;
             // 
