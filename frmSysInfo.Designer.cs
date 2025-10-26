@@ -44,6 +44,9 @@ namespace CNSysInfo
             this.txtAssetTag = new System.Windows.Forms.TextBox();
             this.label10 = new System.Windows.Forms.Label();
             this.gbHardware = new System.Windows.Forms.GroupBox();
+            this.pbBattery = new CNSysInfo.ModernProgressBar();
+            this.pbStorage = new CNSysInfo.ModernProgressBar();
+            this.pbMemory = new CNSysInfo.ModernProgressBar();
             this.lblSpecRatingValue = new System.Windows.Forms.Label();
             this.txtScreenInfo = new System.Windows.Forms.TextBox();
             this.label13 = new System.Windows.Forms.Label();
@@ -76,9 +79,9 @@ namespace CNSysInfo
             this.forceRebootToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.copyToClipboardToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.lblversion = new System.Windows.Forms.Label();
-            this.pbBattery = new CNSysInfo.ModernProgressBar();
-            this.pbStorage = new CNSysInfo.ModernProgressBar();
-            this.pbMemory = new CNSysInfo.ModernProgressBar();
+            this.label14 = new System.Windows.Forms.Label();
+            this.label15 = new System.Windows.Forms.Label();
+            this.label16 = new System.Windows.Forms.Label();
             this.gbHardware.SuspendLayout();
             this.gbSoftware.SuspendLayout();
             this.menuStrip1.SuspendLayout();
@@ -99,7 +102,7 @@ namespace CNSysInfo
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(10, 87);
+            this.label1.Location = new System.Drawing.Point(9, 87);
             this.label1.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(107, 20);
@@ -109,7 +112,7 @@ namespace CNSysInfo
             // label2
             // 
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(10, 53);
+            this.label2.Location = new System.Drawing.Point(9, 53);
             this.label2.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(113, 20);
@@ -119,7 +122,7 @@ namespace CNSysInfo
             // label3
             // 
             this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(10, 21);
+            this.label3.Location = new System.Drawing.Point(9, 21);
             this.label3.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(100, 20);
@@ -129,7 +132,7 @@ namespace CNSysInfo
             // label4
             // 
             this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(10, 294);
+            this.label4.Location = new System.Drawing.Point(9, 294);
             this.label4.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.label4.Name = "label4";
             this.label4.Size = new System.Drawing.Size(67, 20);
@@ -139,7 +142,7 @@ namespace CNSysInfo
             // label5
             // 
             this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(10, 398);
+            this.label5.Location = new System.Drawing.Point(9, 397);
             this.label5.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.label5.Name = "label5";
             this.label5.Size = new System.Drawing.Size(64, 20);
@@ -199,12 +202,12 @@ namespace CNSysInfo
             // label12
             // 
             this.label12.AutoSize = true;
-            this.label12.Location = new System.Drawing.Point(10, 346);
+            this.label12.Location = new System.Drawing.Point(9, 346);
             this.label12.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.label12.Name = "label12";
-            this.label12.Size = new System.Drawing.Size(107, 20);
+            this.label12.Size = new System.Drawing.Size(59, 20);
             this.label12.TabIndex = 25;
-            this.label12.Text = "Battery Health:";
+            this.label12.Text = "Battery:";
             // 
             // txtBatteryHealth
             // 
@@ -258,7 +261,7 @@ namespace CNSysInfo
             // label8
             // 
             this.label8.AutoSize = true;
-            this.label8.Location = new System.Drawing.Point(10, 181);
+            this.label8.Location = new System.Drawing.Point(9, 181);
             this.label8.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.label8.Name = "label8";
             this.label8.Size = new System.Drawing.Size(39, 20);
@@ -289,7 +292,7 @@ namespace CNSysInfo
             // label10
             // 
             this.label10.AutoSize = true;
-            this.label10.Location = new System.Drawing.Point(10, 119);
+            this.label10.Location = new System.Drawing.Point(9, 119);
             this.label10.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.label10.Name = "label10";
             this.label10.Size = new System.Drawing.Size(74, 20);
@@ -298,6 +301,9 @@ namespace CNSysInfo
             // 
             // gbHardware
             // 
+            this.gbHardware.Controls.Add(this.label16);
+            this.gbHardware.Controls.Add(this.label15);
+            this.gbHardware.Controls.Add(this.label14);
             this.gbHardware.Controls.Add(this.pbBattery);
             this.gbHardware.Controls.Add(this.pbStorage);
             this.gbHardware.Controls.Add(this.pbMemory);
@@ -335,6 +341,51 @@ namespace CNSysInfo
             this.gbHardware.TabStop = false;
             this.gbHardware.Text = "Hardware";
             // 
+            // pbBattery
+            // 
+            this.pbBattery.Font = new System.Drawing.Font("Segoe UI", 8F);
+            this.pbBattery.ForeColor = System.Drawing.Color.Black;
+            this.pbBattery.Location = new System.Drawing.Point(125, 378);
+            this.pbBattery.Margin = new System.Windows.Forms.Padding(4);
+            this.pbBattery.Maximum = 100;
+            this.pbBattery.Name = "pbBattery";
+            this.pbBattery.ProgressBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(240)))), ((int)(((byte)(240)))));
+            this.pbBattery.ProgressColor = System.Drawing.Color.FromArgb(((int)(((byte)(16)))), ((int)(((byte)(185)))), ((int)(((byte)(129)))));
+            this.pbBattery.ShowPercentage = true;
+            this.pbBattery.Size = new System.Drawing.Size(606, 15);
+            this.pbBattery.TabIndex = 27;
+            this.pbBattery.Value = 0;
+            // 
+            // pbStorage
+            // 
+            this.pbStorage.Font = new System.Drawing.Font("Segoe UI", 8F);
+            this.pbStorage.ForeColor = System.Drawing.Color.Black;
+            this.pbStorage.Location = new System.Drawing.Point(125, 453);
+            this.pbStorage.Margin = new System.Windows.Forms.Padding(4);
+            this.pbStorage.Maximum = 100;
+            this.pbStorage.Name = "pbStorage";
+            this.pbStorage.ProgressBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(240)))), ((int)(((byte)(240)))));
+            this.pbStorage.ProgressColor = System.Drawing.Color.FromArgb(((int)(((byte)(16)))), ((int)(((byte)(185)))), ((int)(((byte)(129)))));
+            this.pbStorage.ShowPercentage = true;
+            this.pbStorage.Size = new System.Drawing.Size(606, 15);
+            this.pbStorage.TabIndex = 28;
+            this.pbStorage.Value = 0;
+            // 
+            // pbMemory
+            // 
+            this.pbMemory.Font = new System.Drawing.Font("Segoe UI", 8F);
+            this.pbMemory.ForeColor = System.Drawing.Color.Black;
+            this.pbMemory.Location = new System.Drawing.Point(125, 326);
+            this.pbMemory.Margin = new System.Windows.Forms.Padding(4);
+            this.pbMemory.Maximum = 100;
+            this.pbMemory.Name = "pbMemory";
+            this.pbMemory.ProgressBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(240)))), ((int)(((byte)(240)))));
+            this.pbMemory.ProgressColor = System.Drawing.Color.FromArgb(((int)(((byte)(139)))), ((int)(((byte)(92)))), ((int)(((byte)(246)))));
+            this.pbMemory.ShowPercentage = true;
+            this.pbMemory.Size = new System.Drawing.Size(606, 15);
+            this.pbMemory.TabIndex = 29;
+            this.pbMemory.Value = 0;
+            // 
             // lblSpecRatingValue
             // 
             this.lblSpecRatingValue.BackColor = System.Drawing.Color.LightGray;
@@ -364,7 +415,7 @@ namespace CNSysInfo
             // label13
             // 
             this.label13.AutoSize = true;
-            this.label13.Location = new System.Drawing.Point(10, 262);
+            this.label13.Location = new System.Drawing.Point(9, 262);
             this.label13.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.label13.Name = "label13";
             this.label13.Size = new System.Drawing.Size(56, 20);
@@ -387,7 +438,7 @@ namespace CNSysInfo
             // label9
             // 
             this.label9.AutoSize = true;
-            this.label9.Location = new System.Drawing.Point(10, 213);
+            this.label9.Location = new System.Drawing.Point(9, 213);
             this.label9.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.label9.Name = "label9";
             this.label9.Size = new System.Drawing.Size(104, 20);
@@ -410,7 +461,7 @@ namespace CNSysInfo
             // label11
             // 
             this.label11.AutoSize = true;
-            this.label11.Location = new System.Drawing.Point(10, 149);
+            this.label11.Location = new System.Drawing.Point(9, 149);
             this.label11.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.label11.Name = "label11";
             this.label11.Size = new System.Drawing.Size(44, 20);
@@ -419,10 +470,10 @@ namespace CNSysInfo
             // 
             // label6
             // 
-            this.label6.Location = new System.Drawing.Point(10, 473);
+            this.label6.Location = new System.Drawing.Point(9, 473);
             this.label6.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.label6.Name = "label6";
-            this.label6.Size = new System.Drawing.Size(124, 42);
+            this.label6.Size = new System.Drawing.Size(107, 42);
             this.label6.TabIndex = 5;
             this.label6.Text = "ELADWYSOFT Specs Score:";
             // 
@@ -543,7 +594,7 @@ namespace CNSysInfo
             this.menuStrip1.Location = new System.Drawing.Point(0, 0);
             this.menuStrip1.Name = "menuStrip1";
             this.menuStrip1.RenderMode = System.Windows.Forms.ToolStripRenderMode.System;
-            this.menuStrip1.Size = new System.Drawing.Size(765, 28);
+            this.menuStrip1.Size = new System.Drawing.Size(765, 30);
             this.menuStrip1.TabIndex = 32;
             this.menuStrip1.Text = "menuStrip1";
             // 
@@ -564,7 +615,7 @@ namespace CNSysInfo
             this.forceRebootToolStripMenuItem,
             this.copyToClipboardToolStripMenuItem});
             this.functionsToolStripMenuItem.Name = "functionsToolStripMenuItem";
-            this.functionsToolStripMenuItem.Size = new System.Drawing.Size(126, 24);
+            this.functionsToolStripMenuItem.Size = new System.Drawing.Size(126, 26);
             this.functionsToolStripMenuItem.Text = "Quick Functions";
             // 
             // controlPanelToolStripMenuItem
@@ -668,50 +719,35 @@ namespace CNSysInfo
             this.lblversion.TabIndex = 33;
             this.lblversion.Text = "SysInfo v1.3";
             // 
-            // pbBattery
+            // label14
             // 
-            this.pbBattery.Font = new System.Drawing.Font("Segoe UI", 8F);
-            this.pbBattery.ForeColor = System.Drawing.Color.Black;
-            this.pbBattery.Location = new System.Drawing.Point(125, 378);
-            this.pbBattery.Margin = new System.Windows.Forms.Padding(4);
-            this.pbBattery.Maximum = 100;
-            this.pbBattery.Name = "pbBattery";
-            this.pbBattery.ProgressBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(240)))), ((int)(((byte)(240)))));
-            this.pbBattery.ProgressColor = System.Drawing.Color.FromArgb(((int)(((byte)(16)))), ((int)(((byte)(185)))), ((int)(((byte)(129)))));
-            this.pbBattery.ShowPercentage = true;
-            this.pbBattery.Size = new System.Drawing.Size(606, 15);
-            this.pbBattery.TabIndex = 27;
-            this.pbBattery.Value = 0;
+            this.label14.AutoSize = true;
+            this.label14.Location = new System.Drawing.Point(9, 321);
+            this.label14.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.label14.Name = "label14";
+            this.label14.Size = new System.Drawing.Size(104, 20);
+            this.label14.TabIndex = 30;
+            this.label14.Text = "Used memory:";
             // 
-            // pbStorage
+            // label15
             // 
-            this.pbStorage.Font = new System.Drawing.Font("Segoe UI", 8F);
-            this.pbStorage.ForeColor = System.Drawing.Color.Black;
-            this.pbStorage.Location = new System.Drawing.Point(125, 453);
-            this.pbStorage.Margin = new System.Windows.Forms.Padding(4);
-            this.pbStorage.Maximum = 100;
-            this.pbStorage.Name = "pbStorage";
-            this.pbStorage.ProgressBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(240)))), ((int)(((byte)(240)))));
-            this.pbStorage.ProgressColor = System.Drawing.Color.FromArgb(((int)(((byte)(16)))), ((int)(((byte)(185)))), ((int)(((byte)(129)))));
-            this.pbStorage.ShowPercentage = true;
-            this.pbStorage.Size = new System.Drawing.Size(606, 15);
-            this.pbStorage.TabIndex = 28;
-            this.pbStorage.Value = 0;
+            this.label15.AutoSize = true;
+            this.label15.Location = new System.Drawing.Point(9, 373);
+            this.label15.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.label15.Name = "label15";
+            this.label15.Size = new System.Drawing.Size(107, 20);
+            this.label15.TabIndex = 31;
+            this.label15.Text = "Battery Health:";
             // 
-            // pbMemory
+            // label16
             // 
-            this.pbMemory.Font = new System.Drawing.Font("Segoe UI", 8F);
-            this.pbMemory.ForeColor = System.Drawing.Color.Black;
-            this.pbMemory.Location = new System.Drawing.Point(125, 326);
-            this.pbMemory.Margin = new System.Windows.Forms.Padding(4);
-            this.pbMemory.Maximum = 100;
-            this.pbMemory.Name = "pbMemory";
-            this.pbMemory.ProgressBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(240)))), ((int)(((byte)(240)))));
-            this.pbMemory.ProgressColor = System.Drawing.Color.FromArgb(((int)(((byte)(139)))), ((int)(((byte)(92)))), ((int)(((byte)(246)))));
-            this.pbMemory.ShowPercentage = true;
-            this.pbMemory.Size = new System.Drawing.Size(606, 15);
-            this.pbMemory.TabIndex = 29;
-            this.pbMemory.Value = 0;
+            this.label16.AutoSize = true;
+            this.label16.Location = new System.Drawing.Point(9, 448);
+            this.label16.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.label16.Name = "label16";
+            this.label16.Size = new System.Drawing.Size(101, 20);
+            this.label16.TabIndex = 32;
+            this.label16.Text = "Used Storage:";
             // 
             // frmSysInfo
             // 
@@ -805,5 +841,8 @@ namespace CNSysInfo
         private ModernProgressBar pbMemory;
         private ModernProgressBar pbStorage;
         private ModernProgressBar pbBattery;
+        private System.Windows.Forms.Label label15;
+        private System.Windows.Forms.Label label14;
+        private System.Windows.Forms.Label label16;
     }
 }
