@@ -313,13 +313,13 @@ namespace CNSysInfo
             pbMemory.Text = $"{memoryUsagePercent}%";
 
             // Storage with progress bar
-            txtStorage.Text = BuildStorageText(snapshot.Disks);
+            var storageHealth = StorageHealthService.GetStorageHealth("0");
+            var storageDetails = BuildStorageText(snapshot.Disks);
+            txtStorage.Text = string.IsNullOrWhiteSpace(storageDetails)
+                ? "No disks detected."
+                : storageDetails;
 
-            // Update storage progress bar - calculate primary disk usage
-            var (storageUsed, storageTotal) = CalculateStorageUsage(snapshot.Disks);
-            int storagePercent = storageTotal > 0 ? (int)((storageUsed / storageTotal) * 100) : 0;
-            pbStorage.Value = storagePercent;
-            pbStorage.Text = $"{storagePercent}%";
+            UpdateStorageProgress(storageHealth);
 
             // Battery with progress bar
             txtBatteryHealth.Text = BuildBatteryText(snapshot.BatteryInfo);
@@ -388,194 +388,35 @@ private int CalculateMemoryUsagePercentage(SystemInfoSnapshot snapshot)
     return 0; // Default if calculation fails
 }
 
-private (double used, double total) CalculateStorageUsage(IReadOnlyList<DiskInfo> disks)
+private void UpdateStorageProgress(StorageHealthInfo storageHealth)
 {
-    if (disks == null || disks.Count == 0)
-        return (0, 0);
-    
-    try
+    int healthPercentage = storageHealth?.HealthPercentage ?? -1;
+
+    if (healthPercentage >= 0)
     {
-        // Get primary disk (Disk0)
-        var primaryDisk = disks.FirstOrDefault(d => d.Index == "0") ?? disks[0];
-        
-        // Extract size from format like "931.51 GB"
-        var match = System.Text.RegularExpressions.Regex.Match(
-            primaryDisk.Size, 
-            @"([\d.]+)\s*(GB|TB)");
-        
-        if (match.Success && double.TryParse(match.Groups[1].Value, out double size))
+        healthPercentage = Math.Max(0, Math.Min(100, healthPercentage));
+        pbStorage.Value = healthPercentage;
+        pbStorage.Text = string.Empty; // use default percentage rendering
+
+        if (healthPercentage > 80)
         {
-            double sizeInGB = size;
-            if (match.Groups[2].Value == "TB")
-                sizeInGB *= 1024;
-            
-            // Use DriveInfo to get actual usage
-            var drives = System.IO.DriveInfo.GetDrives();
-            var systemDrive = drives.FirstOrDefault(d => d.IsReady && d.DriveType == System.IO.DriveType.Fixed);
-            
-            if (systemDrive != null)
-            {
-                double totalGB = systemDrive.TotalSize / (1024.0 * 1024.0 * 1024.0);
-                double freeGB = systemDrive.AvailableFreeSpace / (1024.0 * 1024.0 * 1024.0);
-                double usedGB = totalGB - freeGB;
-                
-                return (usedGB, totalGB);
-            }
-            
-            // Fallback: assume 70% usage if we can't get actual data
-            return (sizeInGB * 0.7, sizeInGB);
+            pbStorage.ProgressColor = Color.FromArgb(16, 185, 129); // Green
+        }
+        else if (healthPercentage >= 50)
+        {
+            pbStorage.ProgressColor = Color.FromArgb(245, 158, 11); // Yellow
+        }
+        else
+        {
+            pbStorage.ProgressColor = Color.FromArgb(239, 68, 68); // Red
         }
     }
-    catch (Exception ex)
+    else
     {
-        Debug.WriteLine($"Error calculating storage usage: {ex.Message}");
+        pbStorage.Value = 0;
+        pbStorage.Text = "N/A";
+        pbStorage.ProgressColor = Color.FromArgb(148, 163, 184); // Neutral gray for unknown
     }
-    
-    return (0, 0);
-}
-
-private int GetStorageHealthPercentage()
-{
-    try
-    {
-        // Get SMART health from primary drive (PhysicalDrive0)
-        int smartHealth = GetSmartHealthFromAttributes();
-        
-        if (smartHealth >= 0)
-            return smartHealth;
-        
-        // Fallback: Check basic health status
-        var health = StorageHealthService.GetStorageHealth("0");
-        
-        if (health == null || health.HealthStatus == "Unknown" || health.HealthStatus == "Unable to retrieve")
-            return -1;
-        
-        if (!health.IsHealthy)
-            return 25; // Failure predicted
-        
-        return -1; // Unable to determine accurately
-    }
-    catch (Exception ex)
-    {
-        Debug.WriteLine($"Error getting storage health: {ex.Message}");
-        return -1;
-    }
-}
-
-private int GetSmartHealthFromAttributes()
-{
-    try
-    {
-        using (var searcher = new System.Management.ManagementObjectSearcher(
-            "root\\WMI",
-            "SELECT * FROM MSStorageDriver_ATAPISmartData WHERE InstanceName LIKE '%PhysicalDrive0%'"))
-        {
-            foreach (System.Management.ManagementObject obj in searcher.Get())
-            {
-                if (obj["VendorSpecific"] != null)
-                {
-                    byte[] smartData = (byte[])obj["VendorSpecific"];
-                    
-                    if (smartData != null && smartData.Length >= 362)
-                    {
-                        // Log all SMART attributes for debugging
-                        Debug.WriteLine("=== SMART Attributes ===");
-                        
-                        for (int i = 2; i < 362; i += 12)
-                        {
-                            byte id = smartData[i];
-                            if (id == 0) continue;
-                            
-                            byte flags = smartData[i + 1];
-                            byte currentValue = smartData[i + 3];
-                            byte worstValue = smartData[i + 4];
-                            byte threshold = smartData[i + 2];
-                            
-                            // Get raw value (6 bytes, little-endian)
-                            long rawValue = smartData[i + 5] |
-                                          (smartData[i + 6] << 8) |
-                                          (smartData[i + 7] << 16) |
-                                          (smartData[i + 8] << 24) |
-                                          ((long)smartData[i + 9] << 32) |
-                                          ((long)smartData[i + 10] << 40);
-                            
-                            Debug.WriteLine($"ID: 0x{id:X2}, Current: {currentValue}, Worst: {worstValue}, Raw: {rawValue}");
-                            
-                            // Check for SSD wear indicator (most reliable for SSDs)
-                            if (id == 0xE9) // Media Wearout Indicator / Wear Leveling Count
-                            {
-                                Debug.WriteLine($">>> Found SSD Wear Indicator (0xE9): {currentValue}%");
-                                return currentValue;
-                            }
-                            
-                            // Alternative: Available Reserved Space
-                            if (id == 0xE8)
-                            {
-                                Debug.WriteLine($">>> Found Available Reserved Space (0xE8): {currentValue}%");
-                                return currentValue;
-                            }
-                            
-                            // Alternative: Percentage Used (some SSDs)
-                            if (id == 0xCA) // SSD Life Left
-                            {
-                                Debug.WriteLine($">>> Found SSD Life Left (0xCA): {currentValue}%");
-                                return currentValue;
-                            }
-                            
-                            // For Intel/Samsung SSDs
-                            if (id == 0xE7) // SSD Life Left
-                            {
-                                Debug.WriteLine($">>> Found SSD Life (0xE7): {currentValue}%");
-                                return currentValue;
-                            }
-                        }
-                        
-                        Debug.WriteLine("=== No SSD health attribute found, using worst-case from critical attributes ===");
-                        
-                        // Fallback: Calculate from critical attributes
-                        int minHealth = 100;
-                        bool foundAny = false;
-                        
-                        for (int i = 2; i < 362; i += 12)
-                        {
-                            byte id = smartData[i];
-                            if (id == 0) continue;
-                            
-                            byte currentValue = smartData[i + 3];
-                            
-                            // Check critical attributes
-                            switch (id)
-                            {
-                                case 0x05: // Reallocated Sectors
-                                case 0xC4: // Reallocation Events
-                                case 0xC5: // Current Pending Sectors
-                                case 0xC6: // Uncorrectable Sectors
-                                    if (currentValue < minHealth)
-                                    {
-                                        minHealth = currentValue;
-                                        foundAny = true;
-                                    }
-                                    Debug.WriteLine($"Critical attribute 0x{id:X2}: {currentValue}%");
-                                    break;
-                            }
-                        }
-                        
-                        if (foundAny)
-                        {
-                            Debug.WriteLine($">>> Using minimum critical value: {minHealth}%");
-                            return minHealth;
-                        }
-                    }
-                }
-            }
-        }
-    }
-    catch (Exception ex)
-    {
-        Debug.WriteLine($"Error reading SMART attributes: {ex.Message}");
-    }
-    
-    return -1;
 }
         private static string BuildCpuText(SystemInfoSnapshot snapshot)
         {

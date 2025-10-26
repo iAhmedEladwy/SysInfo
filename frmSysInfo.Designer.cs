@@ -44,6 +44,9 @@ namespace CNSysInfo
             this.txtAssetTag = new System.Windows.Forms.TextBox();
             this.label10 = new System.Windows.Forms.Label();
             this.gbHardware = new System.Windows.Forms.GroupBox();
+            this.label16 = new System.Windows.Forms.Label();
+            this.label15 = new System.Windows.Forms.Label();
+            this.label14 = new System.Windows.Forms.Label();
             this.pbBattery = new CNSysInfo.ModernProgressBar();
             this.pbStorage = new CNSysInfo.ModernProgressBar();
             this.pbMemory = new CNSysInfo.ModernProgressBar();
@@ -79,9 +82,6 @@ namespace CNSysInfo
             this.forceRebootToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.copyToClipboardToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.lblversion = new System.Windows.Forms.Label();
-            this.label14 = new System.Windows.Forms.Label();
-            this.label15 = new System.Windows.Forms.Label();
-            this.label16 = new System.Windows.Forms.Label();
             this.gbHardware.SuspendLayout();
             this.gbSoftware.SuspendLayout();
             this.menuStrip1.SuspendLayout();
@@ -142,7 +142,7 @@ namespace CNSysInfo
             // label5
             // 
             this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(9, 397);
+            this.label5.Location = new System.Drawing.Point(9, 396);
             this.label5.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.label5.Name = "label5";
             this.label5.Size = new System.Drawing.Size(64, 20);
@@ -340,6 +340,36 @@ namespace CNSysInfo
             this.gbHardware.TabIndex = 30;
             this.gbHardware.TabStop = false;
             this.gbHardware.Text = "Hardware";
+            // 
+            // label16
+            // 
+            this.label16.AutoSize = true;
+            this.label16.Location = new System.Drawing.Point(9, 448);
+            this.label16.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.label16.Name = "label16";
+            this.label16.Size = new System.Drawing.Size(101, 20);
+            this.label16.TabIndex = 32;
+            this.label16.Text = "Used Storage:";
+            // 
+            // label15
+            // 
+            this.label15.AutoSize = true;
+            this.label15.Location = new System.Drawing.Point(9, 373);
+            this.label15.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.label15.Name = "label15";
+            this.label15.Size = new System.Drawing.Size(107, 20);
+            this.label15.TabIndex = 31;
+            this.label15.Text = "Battery Health:";
+            // 
+            // label14
+            // 
+            this.label14.AutoSize = true;
+            this.label14.Location = new System.Drawing.Point(9, 321);
+            this.label14.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
+            this.label14.Name = "label14";
+            this.label14.Size = new System.Drawing.Size(104, 20);
+            this.label14.TabIndex = 30;
+            this.label14.Text = "Used memory:";
             // 
             // pbBattery
             // 
@@ -594,7 +624,7 @@ namespace CNSysInfo
             this.menuStrip1.Location = new System.Drawing.Point(0, 0);
             this.menuStrip1.Name = "menuStrip1";
             this.menuStrip1.RenderMode = System.Windows.Forms.ToolStripRenderMode.System;
-            this.menuStrip1.Size = new System.Drawing.Size(765, 30);
+            this.menuStrip1.Size = new System.Drawing.Size(765, 28);
             this.menuStrip1.TabIndex = 32;
             this.menuStrip1.Text = "menuStrip1";
             // 
@@ -615,7 +645,7 @@ namespace CNSysInfo
             this.forceRebootToolStripMenuItem,
             this.copyToClipboardToolStripMenuItem});
             this.functionsToolStripMenuItem.Name = "functionsToolStripMenuItem";
-            this.functionsToolStripMenuItem.Size = new System.Drawing.Size(126, 26);
+            this.functionsToolStripMenuItem.Size = new System.Drawing.Size(126, 24);
             this.functionsToolStripMenuItem.Text = "Quick Functions";
             // 
             // controlPanelToolStripMenuItem
@@ -718,36 +748,6 @@ namespace CNSysInfo
             this.lblversion.Size = new System.Drawing.Size(86, 20);
             this.lblversion.TabIndex = 33;
             this.lblversion.Text = "SysInfo v1.3";
-            // 
-            // label14
-            // 
-            this.label14.AutoSize = true;
-            this.label14.Location = new System.Drawing.Point(9, 321);
-            this.label14.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
-            this.label14.Name = "label14";
-            this.label14.Size = new System.Drawing.Size(104, 20);
-            this.label14.TabIndex = 30;
-            this.label14.Text = "Used memory:";
-            // 
-            // label15
-            // 
-            this.label15.AutoSize = true;
-            this.label15.Location = new System.Drawing.Point(9, 373);
-            this.label15.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
-            this.label15.Name = "label15";
-            this.label15.Size = new System.Drawing.Size(107, 20);
-            this.label15.TabIndex = 31;
-            this.label15.Text = "Battery Health:";
-            // 
-            // label16
-            // 
-            this.label16.AutoSize = true;
-            this.label16.Location = new System.Drawing.Point(9, 448);
-            this.label16.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
-            this.label16.Name = "label16";
-            this.label16.Size = new System.Drawing.Size(101, 20);
-            this.label16.TabIndex = 32;
-            this.label16.Text = "Used Storage:";
             // 
             // frmSysInfo
             // 
