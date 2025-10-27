@@ -1380,25 +1380,26 @@ namespace CNSysInfo
         {
             percentage = Math.Max(0, Math.Min(100, percentage));
 
-            if (percentage >= 95) return HealthExcellent;
-            if (percentage >= 85) return HealthVeryGood;
-            if (percentage >= 75) return HealthGood;
-            if (percentage >= 65) return HealthFair;
-            if (percentage >= 55) return HealthAdequate;
-            if (percentage >= 45) return HealthPoor;
-            if (percentage >= 35) return HealthCritical;
-            return HealthSevere;
+            if (percentage >= 90) return HealthExcellent;      // 90-100%: Indigo (Excellent)
+            if (percentage >= 80) return HealthVeryGood;       // 80-89%: Blue (Very Good)
+            if (percentage >= 70) return HealthGood;           // 70-79%: Teal (Good)
+            if (percentage >= 60) return HealthFair;           // 60-69%: Green (Fair)
+            if (percentage >= 50) return HealthAdequate;       // 50-59%: Light Green (Adequate - still OK!)
+            if (percentage >= 40) return HealthPoor;           // 40-49%: Lime (Poor - consider replacement)
+            if (percentage >= 30) return HealthCritical;       // 30-39%: Yellow (Critical - replace soon)
+            return HealthSevere;                               // <30%: Orange (Severe - replace now)
         }
 
         public static Color GetMemoryUsageTier(int percentage)
         {
             percentage = Math.Max(0, Math.Min(100, percentage));
 
-            if (percentage < 30) return UsageLow;
-            if (percentage < 50) return UsageModerate;
-            if (percentage < 70) return UsageHigh;
-            if (percentage < 85) return UsageVeryHigh;
-            return UsageCritical;
+            // Memory/Storage USAGE: Lower is better (inverse logic)
+            if (percentage < 40) return UsageLow;              // <40%: Indigo (Excellent - plenty free)
+            if (percentage < 60) return UsageModerate;         // 40-59%: Blue (Good - normal use)
+            if (percentage < 75) return UsageHigh;             // 60-74%: Teal (Moderate - watch it)
+            if (percentage < 85) return UsageVeryHigh;         // 75-84%: Yellow (High - consider cleanup/upgrade)
+            return UsageCritical; 
         }
 
         public static Color GetTextForTier(Color backgroundColor)
