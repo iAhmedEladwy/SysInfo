@@ -36,11 +36,16 @@ namespace CNSysInfo
         private enum SpecRatingLevel
         {
             Unknown,
-            PremiumPerformance,  // New: Win11 CPU + NVMe + 16GB+
-            ModernStandard,      // Changed from "Approved": Win11 CPU + Any SSD + 16GB+
-            AdequatePerformance, // Changed from "Low": Has deficiencies but usable
-            BelowStandard,       // New: Single critical issue
-            LegacySystem        // Changed from "Obsolete": Multiple critical issues
+            Flagship,           // 🏆 Elite tier
+            Enthusiast,         // 💎 Prosumer tier
+            PremiumPerformance, // ⭐ Premium tier
+            HighPerformance,    // 🚀 High tier
+            ModernStandard,     // ✅ Modern tier
+            AdequatePerformance,// ⚡ Adequate tier
+            BelowStandard,      // ⚠️ Below standard
+            Outdated,           // 📉 Outdated
+            Legacy,             // 🔻 Legacy
+            Obsolete            // ❌ Obsolete
         }
 
         private enum StorageKind
@@ -312,12 +317,12 @@ namespace CNSysInfo
 
             // Update memory progress bar - calculate usage percentage
             int memoryUsagePercent = CalculateMemoryUsagePercentage(snapshot);
-            memoryUsagePercent = Math.Max(0, Math.Min(100, memoryUsagePercent));
-            pbMemory.Value = memoryUsagePercent;
+            pbMemory.Value = Math.Max(0, Math.Min(100, memoryUsagePercent));
             pbMemory.Text = $"{memoryUsagePercent}%";
-            var memoryTier = UnifiedColors.GetMemoryUsageTier(memoryUsagePercent);
-            pbMemory.ProgressColor = UnifiedColors.GetBackgroundForTier(memoryTier);
-            pbMemory.ForeColor = UnifiedColors.GetTextForTier(memoryTier);
+
+            var memoryColor = UnifiedColors.GetMemoryUsageTier(memoryUsagePercent);
+            pbMemory.ProgressColor = memoryColor;
+            pbMemory.ForeColor = UnifiedColors.GetTextForTier(memoryColor);
 
             // Storage with progress bar
             var storageDetails = BuildStorageText(snapshot.Disks);
@@ -342,13 +347,13 @@ namespace CNSysInfo
             // Update battery progress bar
             if (snapshot.BatteryInfo != null)
             {
-                var batteryValue = Math.Max(0, Math.Min(100, snapshot.BatteryInfo.HealthPercentage));
-                pbBattery.Value = batteryValue;
-                pbBattery.Text = $"{snapshot.BatteryInfo.HealthPercentage}%";
+                int health = snapshot.BatteryInfo.HealthPercentage;
+                pbBattery.Value = Math.Max(0, Math.Min(100, health));
+                pbBattery.Text = $"{health}%";
 
-                var batteryTier = UnifiedColors.GetHealthTier(snapshot.BatteryInfo.HealthPercentage);
-                pbBattery.ProgressColor = UnifiedColors.GetBackgroundForTier(batteryTier);
-                pbBattery.ForeColor = UnifiedColors.GetTextForTier(batteryTier);
+                var healthColor = UnifiedColors.GetHealthTier(health);
+                pbBattery.ProgressColor = healthColor;
+                pbBattery.ForeColor = UnifiedColors.GetTextForTier(healthColor);
             }
             else
             {
@@ -413,9 +418,9 @@ namespace CNSysInfo
                 pbStorage.Value = usagePercent;
                 pbStorage.Text = $"{usagePercent}% Used";
 
-                var usageTier = UnifiedColors.GetMemoryUsageTier(usagePercent);
-                pbStorage.ProgressColor = UnifiedColors.GetBackgroundForTier(usageTier);
-                pbStorage.ForeColor = UnifiedColors.GetTextForTier(usageTier);
+                var usageColor = UnifiedColors.GetMemoryUsageTier(usagePercent);
+                pbStorage.ProgressColor = usageColor;
+                pbStorage.ForeColor = UnifiedColors.GetTextForTier(usageColor);
 
                 Debug.WriteLine($"[Storage] Showing usage: {usagePercent}% ({FormatBytes(diskUsage.UsedBytes)} / {FormatBytes(diskUsage.TotalBytes)})");
             }
@@ -824,56 +829,94 @@ namespace CNSysInfo
         }
 
         private static SpecRatingLevel EvaluateSpecRating(
-         CpuSupportLevel cpuSupport,
-         bool hasCpuData,
-         double memoryGb,
-         bool hasMemoryData,
-         StorageKind storageKind,
-         bool hasDiskData)
+            CpuSupportLevel cpuSupport,
+            bool hasCpuData,
+            double memoryGb,
+            bool hasMemoryData,
+            StorageKind storageKind,
+            bool hasDiskData)
         {
-            // Premium Performance: Win11 CPU + NVMe + 16GB+
-            if (cpuSupport == CpuSupportLevel.Supported &&
-                hasMemoryData && hasDiskData &&
-                memoryGb >= 16 &&
-                storageKind == StorageKind.Nvme)
+            bool hasWin11Cpu = cpuSupport == CpuSupportLevel.Supported;
+            bool hasOldCpu = cpuSupport == CpuSupportLevel.Unsupported;
+            bool hasNvme = storageKind == StorageKind.Nvme;
+            bool hasSataSsd = storageKind == StorageKind.SataSsd;
+            bool hasAnySsd = hasNvme || hasSataSsd;
+            bool hasHdd = storageKind == StorageKind.Hdd;
+
+            // Tier 1: FLAGSHIP (Top 1%)
+            // Requirements: Win11 CPU + 32GB+ RAM + NVMe
+            if (hasWin11Cpu && memoryGb >= 32 && hasNvme)
+            {
+                return SpecRatingLevel.Flagship;
+            }
+
+            // Tier 2: ENTHUSIAST (Top 5%)
+            // Requirements: Win11 CPU + 24GB+ RAM + NVMe, OR Win11 CPU + 32GB+ + SATA SSD
+            if (hasWin11Cpu && ((memoryGb >= 24 && hasNvme) || (memoryGb >= 32 && hasSataSsd)))
+            {
+                return SpecRatingLevel.Enthusiast;
+            }
+
+            // Tier 3: PREMIUM PERFORMANCE (Top 15%)
+            // Requirements: Win11 CPU + 16-23GB RAM + NVMe
+            if (hasWin11Cpu && memoryGb >= 16 && memoryGb < 24 && hasNvme)
             {
                 return SpecRatingLevel.PremiumPerformance;
             }
 
-            // Modern Standard: Win11 CPU + Any SSD + 16GB+
-            if (cpuSupport == CpuSupportLevel.Supported &&
-                hasMemoryData && hasDiskData &&
-                memoryGb >= 16 &&
-                (storageKind == StorageKind.Nvme || storageKind == StorageKind.SataSsd))
+            // Tier 4: HIGH PERFORMANCE (Top 30%)
+            // Requirements: Win11 CPU + 16GB+ RAM + SATA SSD, OR Win11 CPU + 24GB+ + Any SSD
+            if (hasWin11Cpu && ((memoryGb >= 16 && hasSataSsd) || (memoryGb >= 24 && hasAnySsd)))
+            {
+                return SpecRatingLevel.HighPerformance;
+            }
+
+            // Tier 5: MODERN STANDARD (Top 50%)
+            // Requirements: Win11 CPU + 12-16GB RAM + Any SSD
+            if (hasWin11Cpu && memoryGb >= 12 && memoryGb < 16 && hasAnySsd)
             {
                 return SpecRatingLevel.ModernStandard;
             }
 
-            // Count critical deficiencies for Legacy System detection
-            bool hasUnsupportedCpu = hasCpuData && cpuSupport == CpuSupportLevel.Unsupported;
-            bool hasCriticallyLowMemory = hasMemoryData && memoryGb > 0 && memoryGb <= 4;
-            bool hasHdd = hasDiskData && storageKind == StorageKind.Hdd;
-
-            int criticalDeficiencies = 0;
-            if (hasUnsupportedCpu) criticalDeficiencies++;
-            if (hasCriticallyLowMemory) criticalDeficiencies++;
-            if (hasHdd) criticalDeficiencies++;
-
-            // Legacy System: 2 or more critical deficiencies
-            if (criticalDeficiencies >= 2)
+            // Tier 6: ADEQUATE PERFORMANCE (Average)
+            // Requirements: Win11 CPU + 8-12GB RAM + SSD, OR Old CPU + 16GB+ + NVMe
+            if ((hasWin11Cpu && memoryGb >= 8 && memoryGb < 12 && hasAnySsd) ||
+                (hasOldCpu && memoryGb >= 16 && hasNvme))
             {
-                return SpecRatingLevel.LegacySystem;
+                return SpecRatingLevel.AdequatePerformance;
             }
 
-            // Below Standard: Single critical deficiency OR Win11 CPU with very low RAM
-            if (hasUnsupportedCpu ||
-                hasCriticallyLowMemory ||
-                (cpuSupport == CpuSupportLevel.Supported && hasMemoryData && memoryGb > 0 && memoryGb <= 6))
+            // Tier 7: BELOW STANDARD (Below Average)
+            // Requirements: Win11 CPU + <8GB + SSD, OR Win11 CPU + Any RAM + HDD, OR Old CPU + 12GB+ + SSD
+            if ((hasWin11Cpu && memoryGb > 0 && memoryGb < 8 && hasAnySsd) ||
+                (hasWin11Cpu && hasHdd) ||
+                (hasOldCpu && memoryGb >= 12 && hasAnySsd))
             {
                 return SpecRatingLevel.BelowStandard;
             }
 
-            // Adequate Performance: Everything else
+            // Tier 8: OUTDATED (Old but usable)
+            // Requirements: Old CPU + 8-12GB RAM + Any storage, OR Old CPU + <8GB + SSD
+            if (hasOldCpu && ((memoryGb >= 8 && memoryGb < 12) || (memoryGb < 8 && hasAnySsd)))
+            {
+                return SpecRatingLevel.Outdated;
+            }
+
+            // Tier 9: LEGACY (Very old)
+            // Requirements: Old CPU + 6-8GB RAM + HDD, OR Old CPU + 4-6GB + SSD
+            if (hasOldCpu && ((memoryGb >= 6 && memoryGb < 8 && hasHdd) || (memoryGb >= 4 && memoryGb < 6 && hasAnySsd)))
+            {
+                return SpecRatingLevel.Legacy;
+            }
+
+            // Tier 10: OBSOLETE (Critical - needs immediate replacement)
+            // Requirements: Old CPU + ≤4GB RAM, OR Old CPU + <6GB + HDD
+            if (hasOldCpu && (memoryGb <= 4 || (memoryGb < 6 && hasHdd)))
+            {
+                return SpecRatingLevel.Obsolete;
+            }
+
+            // Default to Adequate if we can't determine
             return SpecRatingLevel.AdequatePerformance;
         }
 
@@ -883,98 +926,122 @@ namespace CNSysInfo
 
             switch (level)
             {
+                case SpecRatingLevel.Flagship:
+                    lblSpecRatingValue.Text = "🏆 Flagship - Elite workstation for intensive tasks";
+                    lblSpecRatingValue.BackColor = UnifiedColors.Flagship;
+                    lblSpecRatingValue.ForeColor = UnifiedColors.FlagshipText;
+                    break;
+
+                case SpecRatingLevel.Enthusiast:
+                    lblSpecRatingValue.Text = "💎 Enthusiast - Excellent for prosumer workloads";
+                    lblSpecRatingValue.BackColor = UnifiedColors.Enthusiast;
+                    lblSpecRatingValue.ForeColor = UnifiedColors.EnthusiastText;
+                    break;
+
                 case SpecRatingLevel.PremiumPerformance:
-                    lblSpecRatingValue.Text = "✓ Premium Performance - Excellent for demanding workloads";
+                    lblSpecRatingValue.Text = "⭐ Premium Performance - Excellent for demanding workloads";
                     lblSpecRatingValue.BackColor = UnifiedColors.Premium;
                     lblSpecRatingValue.ForeColor = UnifiedColors.PremiumText;
                     break;
 
+                case SpecRatingLevel.HighPerformance:
+                    lblSpecRatingValue.Text = "🚀 High Performance - Great for multitasking & productivity";
+                    lblSpecRatingValue.BackColor = UnifiedColors.HighPerformance;
+                    lblSpecRatingValue.ForeColor = UnifiedColors.HighPerformanceText;
+                    break;
+
                 case SpecRatingLevel.ModernStandard:
-                    lblSpecRatingValue.Text = "✓ Modern Standard - Ready for everyday tasks";
-                    lblSpecRatingValue.BackColor = UnifiedColors.Good;
-                    lblSpecRatingValue.ForeColor = UnifiedColors.GoodText;
+                    lblSpecRatingValue.Text = "✅ Modern Standard - Ready for everyday tasks";
+                    lblSpecRatingValue.BackColor = UnifiedColors.ModernStandard;
+                    lblSpecRatingValue.ForeColor = UnifiedColors.ModernStandardText;
                     break;
 
                 case SpecRatingLevel.AdequatePerformance:
-                    lblSpecRatingValue.Text = "⚠ Adequate Performance" +
-                        (string.IsNullOrEmpty(upgradeRecommendations) ? "" : " - Consider: " + upgradeRecommendations);
+                    lblSpecRatingValue.Text = "✓ Adequate - Meets minimum requirements for modern use" +
+                        (string.IsNullOrEmpty(upgradeRecommendations) ? "" : " - To improve: " + upgradeRecommendations);
                     lblSpecRatingValue.BackColor = UnifiedColors.Adequate;
                     lblSpecRatingValue.ForeColor = UnifiedColors.AdequateText;
                     break;
 
                 case SpecRatingLevel.BelowStandard:
-                    lblSpecRatingValue.Text = "⚠ Below Standard - Upgrade: " +
+                    lblSpecRatingValue.Text = "⚠️ Below Standard - Upgrade recommended: " +
                         (string.IsNullOrEmpty(upgradeRecommendations) ? "Multiple components" : upgradeRecommendations);
                     lblSpecRatingValue.BackColor = UnifiedColors.BelowStandard;
                     lblSpecRatingValue.ForeColor = UnifiedColors.BelowStandardText;
                     break;
 
-                case SpecRatingLevel.LegacySystem:
-                    lblSpecRatingValue.Text = "✗ Legacy System - Full system upgrade strongly recommended";
-                    lblSpecRatingValue.BackColor = UnifiedColors.Critical;
-                    lblSpecRatingValue.ForeColor = UnifiedColors.CriticalText;
+                case SpecRatingLevel.Outdated:
+                    lblSpecRatingValue.Text = "📉 Outdated - Significant upgrades needed: " +
+                        (string.IsNullOrEmpty(upgradeRecommendations) ? "CPU, RAM, Storage" : upgradeRecommendations);
+                    lblSpecRatingValue.BackColor = UnifiedColors.Outdated;
+                    lblSpecRatingValue.ForeColor = UnifiedColors.OutdatedText;
+                    break;
+
+                case SpecRatingLevel.Legacy:
+                    lblSpecRatingValue.Text = "🔻 Legacy System - Full system replacement strongly advised";
+                    lblSpecRatingValue.BackColor = UnifiedColors.Legacy;
+                    lblSpecRatingValue.ForeColor = UnifiedColors.LegacyText;
+                    break;
+
+                case SpecRatingLevel.Obsolete:
+                    lblSpecRatingValue.Text = "❌ Obsolete - Critical: Immediate replacement required";
+                    lblSpecRatingValue.BackColor = UnifiedColors.Obsolete;
+                    lblSpecRatingValue.ForeColor = UnifiedColors.ObsoleteText;
                     break;
 
                 default:
-                    lblSpecRatingValue.Text = "Unable to determine";
-                    lblSpecRatingValue.BackColor = UnifiedColors.Unknown;
-                    lblSpecRatingValue.ForeColor = UnifiedColors.DefaultText;
+                    lblSpecRatingValue.Text = "❓ Unable to determine system rating";
+                    lblSpecRatingValue.BackColor = Color.LightGray;
+                    lblSpecRatingValue.ForeColor = Color.Black;
                     break;
             }
         }
 
         private string BuildUpgradeRecommendations()
-        {
-            if (_currentSnapshot == null)
-                return string.Empty;
+{
+    if (_currentSnapshot == null)
+        return string.Empty;
 
-            var recommendations = new List<string>();
-            var cpuSupport = CpuSupportEvaluator.Evaluate(_currentSnapshot);
-            var memoryGb = ExtractMemoryInGigabytes(_currentSnapshot.InstalledPhysicalMemory);
-            var primaryDisk = ResolvePrimaryDisk(_currentSnapshot.Disks);
-            var storageKind = ClassifyStorageKind(primaryDisk);
+    var recommendations = new List<string>();
+    var cpuSupport = CpuSupportEvaluator.Evaluate(_currentSnapshot);
+    var memoryGb = ExtractMemoryInGigabytes(_currentSnapshot.InstalledPhysicalMemory);
+    var primaryDisk = ResolvePrimaryDisk(_currentSnapshot.Disks);
+    var storageKind = ClassifyStorageKind(primaryDisk);
 
-            // Priority 1: CPU (most impactful for system longevity)
-            if (cpuSupport == CpuSupportLevel.Unsupported)
-            {
-                recommendations.Add("CPU (Win11 incompatible)");
-            }
+    // CPU recommendations
+    if (cpuSupport == CpuSupportLevel.Unsupported)
+    {
+        recommendations.Add("CPU to Win11-compatible (8th gen Intel/Ryzen 2000+)");
+    }
 
-            // Priority 2: RAM (if critically low)
-            if (memoryGb > 0 && memoryGb < 8)
-            {
-                int targetGb = memoryGb <= 4 ? 16 : 12;
-                int neededGb = targetGb - (int)memoryGb;
-                recommendations.Add($"RAM (add {neededGb}GB to reach {targetGb}GB)");
-            }
-            else if (memoryGb >= 8 && memoryGb < 16)
-            {
-                int neededGb = 16 - (int)memoryGb;
-                recommendations.Add($"RAM (add {neededGb}GB to reach 16GB)");
-            }
+    // RAM recommendations (more granular)
+    if (memoryGb > 0)
+    {
+        if (memoryGb < 8)
+            recommendations.Add($"RAM to 16GB (add {16 - (int)memoryGb}GB)");
+        else if (memoryGb < 16)
+            recommendations.Add($"RAM to 16GB (add {16 - (int)memoryGb}GB for better performance)");
+        else if (memoryGb < 24 && storageKind == StorageKind.Nvme)
+            recommendations.Add($"RAM to 24GB (add {24 - (int)memoryGb}GB for enthusiast tier)");
+    }
 
-            // Priority 3: Storage type
-            if (storageKind == StorageKind.Hdd)
-            {
-                // Suggest appropriate upgrade based on other components
-                if (cpuSupport == CpuSupportLevel.Supported && memoryGb >= 16)
-                {
-                    recommendations.Add("Storage (upgrade to NVMe SSD)");
-                }
-                else
-                {
-                    recommendations.Add("Storage (upgrade to SSD)");
-                }
-            }
-            else if (storageKind == StorageKind.SataSsd &&
-                     cpuSupport == CpuSupportLevel.Supported &&
-                     memoryGb >= 16)
-            {
-                recommendations.Add("Storage (consider NVMe for premium performance)");
-            }
+    // Storage recommendations (more specific)
+    if (storageKind == StorageKind.Hdd)
+    {
+        if (cpuSupport == CpuSupportLevel.Supported && memoryGb >= 16)
+            recommendations.Add("Storage to Gen4 NVMe SSD (5000MB/s+)");
+        else if (cpuSupport == CpuSupportLevel.Supported)
+            recommendations.Add("Storage to NVMe SSD");
+        else
+            recommendations.Add("Storage to SATA SSD minimum");
+    }
+    else if (storageKind == StorageKind.SataSsd && cpuSupport == CpuSupportLevel.Supported && memoryGb >= 16)
+    {
+        recommendations.Add("Storage to NVMe (3x faster than SATA)");
+    }
 
-            return string.Join(", ", recommendations);
-        }
+    return string.Join(", ", recommendations);
+}
 
         #endregion
 
@@ -1236,140 +1303,132 @@ namespace CNSysInfo
         #endregion
     }
 
+    #region Unified Color Palette (10-Tier System)
+
     public static class UnifiedColors
     {
-        public enum StatusTier
-        {
-            Unknown,
-            Premium,
-            Good,
-            Adequate,
-            BelowStandard,
-            Critical
-        }
+        // === SPEC RATING COLORS (10 Tiers) ===
 
-        public static readonly Color Premium = Color.FromArgb(100, 149, 237); // Cornflower Blue
-        public static readonly Color Good = Color.FromArgb(144, 238, 144); // Light Green
-        public static readonly Color Adequate = Color.FromArgb(255, 200, 124); // Light Orange
-        public static readonly Color BelowStandard = Color.FromArgb(255, 165, 79); // Coral
-        public static readonly Color Critical = Color.FromArgb(255, 182, 193); // Light Pink
-        public static readonly Color Unknown = Color.FromArgb(148, 163, 184); // Slate Gray
+        // Tier 1: Flagship (Top 1%)
+        public static readonly Color Flagship = Color.FromArgb(75, 0, 130);        // Deep Indigo
+        public static readonly Color FlagshipText = Color.White;
 
-        public static readonly Color Background = Color.FromArgb(240, 240, 240); // Light Gray
-        public static readonly Color Surface = Color.White;
+        // Tier 2: Enthusiast (Top 5%)
+        public static readonly Color Enthusiast = Color.FromArgb(0, 120, 215);     // Windows Blue #0078D7
+        public static readonly Color EnthusiastText = Color.White;
 
+        // Tier 3: Premium Performance (Top 15%)
+        public static readonly Color Premium = Color.FromArgb(0, 150, 136);        // Teal
         public static readonly Color PremiumText = Color.White;
-        public static readonly Color GoodText = Color.DarkGreen; // RGB(0, 100, 0)
-        public static readonly Color AdequateText = Color.FromArgb(139, 69, 19); // SaddleBrown
-        public static readonly Color BelowStandardText = Color.DarkRed; // RGB(139, 0, 0)
-        public static readonly Color CriticalText = Color.DarkRed;
+
+        // Tier 4: High Performance (Top 30%)
+        public static readonly Color HighPerformance = Color.FromArgb(76, 175, 80); // Material Green
+        public static readonly Color HighPerformanceText = Color.White;
+
+        // Tier 5: Modern Standard (Top 50%)
+        public static readonly Color ModernStandard = Color.FromArgb(144, 238, 144); // Light Green
+        public static readonly Color ModernStandardText = Color.DarkGreen;
+
+        // Tier 6: Adequate Performance (Average) - Entry Good
+        public static readonly Color Adequate = Color.FromArgb(156, 204, 101);     // Light Lime (positive green)
+        public static readonly Color AdequateText = Color.FromArgb(51, 105, 30);   // Dark Green
+
+        // === BELOW THIS LINE = NOT RECOMMENDED ===
+
+        // Tier 7: Below Standard (Below Average)
+        public static readonly Color BelowStandard = Color.FromArgb(255, 235, 59); // Yellow (Warning)
+        public static readonly Color BelowStandardText = Color.FromArgb(80, 60, 0);
+
+        // Tier 8: Outdated (Old)
+        public static readonly Color Outdated = Color.FromArgb(255, 200, 124);     // Light Orange
+        public static readonly Color OutdatedText = Color.FromArgb(139, 69, 19);
+
+        // Tier 9: Legacy (Very Old)
+        public static readonly Color Legacy = Color.FromArgb(255, 165, 79);        // Coral
+        public static readonly Color LegacyText = Color.DarkRed;
+
+        // Tier 10: Obsolete (Critical)
+        public static readonly Color Obsolete = Color.FromArgb(255, 182, 193);     // Light Pink
+        public static readonly Color ObsoleteText = Color.DarkRed;
+
+        // === PROGRESS BAR COLORS ===
+
+        public static readonly Color HealthExcellent = Flagship;
+        public static readonly Color HealthVeryGood = Enthusiast;
+        public static readonly Color HealthGood = Premium;
+        public static readonly Color HealthFair = HighPerformance;
+        public static readonly Color HealthAdequate = ModernStandard;
+        public static readonly Color HealthPoor = BelowStandard;
+        public static readonly Color HealthCritical = Outdated;
+        public static readonly Color HealthSevere = Obsolete;
+
+        public static readonly Color UsageLow = Flagship;
+        public static readonly Color UsageModerate = Enthusiast;
+        public static readonly Color UsageHigh = BelowStandard;
+        public static readonly Color UsageVeryHigh = Outdated;
+        public static readonly Color UsageCritical = Legacy;
+
+        public static readonly Color Unknown = Color.FromArgb(148, 163, 184);
         public static readonly Color DefaultText = Color.Black;
+        public static readonly Color Background = Color.FromArgb(240, 240, 240);
+        public static readonly Color Surface = Color.White;
+        public static readonly Color ProgressBackground = Color.FromArgb(240, 240, 240);
 
-        public static readonly Color ProgressBackground = Background;
+        // === HELPER METHODS ===
 
-        public static StatusTier GetHealthTier(int? percentage)
+        public static Color GetHealthTier(int percentage)
         {
-            if (!percentage.HasValue)
-            {
-                return StatusTier.Unknown;
-            }
+            percentage = Math.Max(0, Math.Min(100, percentage));
 
-            var value = ClampPercentage(percentage.Value);
-            if (value >= 90)
-            {
-                return StatusTier.Premium;
-            }
-
-            if (value >= 80)
-            {
-                return StatusTier.Good;
-            }
-
-            if (value >= 60)
-            {
-                return StatusTier.Adequate;
-            }
-
-            if (value >= 40)
-            {
-                return StatusTier.BelowStandard;
-            }
-
-            return StatusTier.Critical;
+            if (percentage >= 95) return HealthExcellent;
+            if (percentage >= 85) return HealthVeryGood;
+            if (percentage >= 75) return HealthGood;
+            if (percentage >= 65) return HealthFair;
+            if (percentage >= 55) return HealthAdequate;
+            if (percentage >= 45) return HealthPoor;
+            if (percentage >= 35) return HealthCritical;
+            return HealthSevere;
         }
 
-        public static StatusTier GetMemoryUsageTier(int? percentage)
+        public static Color GetMemoryUsageTier(int percentage)
         {
-            if (!percentage.HasValue)
-            {
-                return StatusTier.Unknown;
-            }
+            percentage = Math.Max(0, Math.Min(100, percentage));
 
-            var value = ClampPercentage(percentage.Value);
-            if (value >= 90)
-            {
-                return StatusTier.Critical;
-            }
-
-            if (value >= 75)
-            {
-                return StatusTier.BelowStandard;
-            }
-
-            if (value >= 60)
-            {
-                return StatusTier.Adequate;
-            }
-
-            if (value >= 40)
-            {
-                return StatusTier.Good;
-            }
-
-            return StatusTier.Premium;
+            if (percentage < 30) return UsageLow;
+            if (percentage < 50) return UsageModerate;
+            if (percentage < 70) return UsageHigh;
+            if (percentage < 85) return UsageVeryHigh;
+            return UsageCritical;
         }
 
-        public static Color GetBackgroundForTier(StatusTier tier)
+        public static Color GetTextForTier(Color backgroundColor)
         {
-            return tier switch
+            if (backgroundColor == Flagship || backgroundColor == Enthusiast ||
+                backgroundColor == Premium || backgroundColor == HighPerformance)
             {
-                StatusTier.Premium => Premium,
-                StatusTier.Good => Good,
-                StatusTier.Adequate => Adequate,
-                StatusTier.BelowStandard => BelowStandard,
-                StatusTier.Critical => Critical,
-                StatusTier.Unknown => Unknown,
-                _ => Unknown
-            };
-        }
-
-        public static Color GetTextForTier(StatusTier tier)
-        {
-            return tier switch
-            {
-                StatusTier.Premium => PremiumText,
-                StatusTier.Good => GoodText,
-                StatusTier.Adequate => AdequateText,
-                StatusTier.BelowStandard => BelowStandardText,
-                StatusTier.Critical => CriticalText,
-                StatusTier.Unknown => DefaultText,
-                _ => DefaultText
-            };
-        }
-
-        private static int ClampPercentage(int value)
-        {
-            if (value < 0)
-            {
-                return 0;
+                return Color.White;
             }
 
-            if (value > 100)
-            {
-                return 100;
-            }
+            if (backgroundColor == ModernStandard || backgroundColor == Adequate)
+                return Color.FromArgb(0, 100, 0);
 
-            return value;
+            if (backgroundColor == BelowStandard)
+                return BelowStandardText;
+
+            if (backgroundColor == Outdated)
+                return OutdatedText;
+
+            if (backgroundColor == Legacy || backgroundColor == Obsolete)
+                return Color.DarkRed;
+
+            return DefaultText;
+        }
+
+        public static Color GetBackgroundForTier(Color tierColor)
+        {
+            return tierColor;
         }
     }
+
+    #endregion
 }

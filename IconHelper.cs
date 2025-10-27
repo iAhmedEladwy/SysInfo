@@ -59,15 +59,15 @@ namespace CNSysInfo
                     return UnifiedColors.Premium;
                 case "memory":
                 case "ram":
-                    return UnifiedColors.Good;
+                    return UnifiedColors.ModernStandard;
                 case "storage":
                 case "disk":
                     return UnifiedColors.Adequate;
                 case "gpu":
                 case "graphics":
-                    return UnifiedColors.Critical;
+                    return UnifiedColors.Outdated;
                 case "battery":
-                    return UnifiedColors.Good;
+                    return UnifiedColors.ModernStandard;
                 case "screen":
                 case "monitor":
                     return UnifiedColors.Premium;
@@ -81,8 +81,7 @@ namespace CNSysInfo
         /// </summary>
         public static Color GetHealthColor(int percentage)
         {
-            var tier = UnifiedColors.GetHealthTier(percentage);
-            return UnifiedColors.GetBackgroundForTier(tier);
+            return UnifiedColors.GetHealthTier(percentage);
         }
 
         /// <summary>
