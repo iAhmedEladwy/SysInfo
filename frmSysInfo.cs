@@ -6,6 +6,7 @@ using System.Drawing.Imaging;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Management;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -319,22 +320,21 @@ namespace CNSysInfo
             pbMemory.ForeColor = UnifiedColors.GetTextForTier(memoryTier);
 
             // Storage with progress bar
-            var storageHealth = StorageHealthService.GetStorageHealth("0");
-            var storageUsage = StorageHealthService.CalculateDiskUsage("0");
             var storageDetails = BuildStorageText(snapshot.Disks);
             txtStorage.Text = string.IsNullOrWhiteSpace(storageDetails)
                 ? "No disks detected."
                 : storageDetails;
 
-            if (storageUsage.HasData)
+            var diskUsage = GetDisk0Usage();
+
+            if (diskUsage.HasData)
             {
-                var usageSummary = $"Disk0 Usage: {FormatBytes(storageUsage.UsedBytes)} used / {FormatBytes(storageUsage.TotalBytes)} total ({storageUsage.UsagePercentage}% used)";
-                txtStorage.Text = string.IsNullOrWhiteSpace(txtStorage.Text)
-                    ? usageSummary
-                    : $"{txtStorage.Text}{Environment.NewLine}{usageSummary}";
+                var usageSummary = $"Disk0 Usage: {FormatBytes(diskUsage.UsedBytes)} used / {FormatBytes(diskUsage.TotalBytes)} total ({diskUsage.UsagePercentage}% used)";
+                txtStorage.Text = $"{txtStorage.Text}{Environment.NewLine}{usageSummary}";
             }
 
-            UpdateStorageProgress(storageHealth, storageUsage);
+            var storageHealth = StorageHealthService.GetStorageHealth("0");
+            UpdateStorageProgress(storageHealth, diskUsage);
 
             // Battery with progress bar
             txtBatteryHealth.Text = BuildBatteryText(snapshot.BatteryInfo);
@@ -405,29 +405,19 @@ namespace CNSysInfo
 
         private void UpdateStorageProgress(StorageHealthInfo storageHealth, DiskUsageInfo usageInfo)
         {
-            if (usageInfo != null && usageInfo.HasData)
+            var diskUsage = GetDisk0Usage();
+
+            if (diskUsage.HasData)
             {
-                int usagePercent = Math.Max(0, Math.Min(100, usageInfo.UsagePercentage));
+                int usagePercent = Math.Max(0, Math.Min(100, diskUsage.UsagePercentage));
                 pbStorage.Value = usagePercent;
                 pbStorage.Text = $"{usagePercent}% Used";
 
                 var usageTier = UnifiedColors.GetMemoryUsageTier(usagePercent);
                 pbStorage.ProgressColor = UnifiedColors.GetBackgroundForTier(usageTier);
                 pbStorage.ForeColor = UnifiedColors.GetTextForTier(usageTier);
-                return;
-            }
 
-            int healthPercentage = storageHealth?.HealthPercentage ?? -1;
-
-            if (healthPercentage >= 0)
-            {
-                healthPercentage = Math.Max(0, Math.Min(100, healthPercentage));
-                pbStorage.Value = healthPercentage;
-                pbStorage.Text = $"{healthPercentage}%";
-
-                var storageTier = UnifiedColors.GetHealthTier(healthPercentage);
-                pbStorage.ProgressColor = UnifiedColors.GetBackgroundForTier(storageTier);
-                pbStorage.ForeColor = UnifiedColors.GetTextForTier(storageTier);
+                Debug.WriteLine($"[Storage] Showing usage: {usagePercent}% ({FormatBytes(diskUsage.UsedBytes)} / {FormatBytes(diskUsage.TotalBytes)})");
             }
             else
             {
@@ -435,6 +425,8 @@ namespace CNSysInfo
                 pbStorage.Text = "N/A";
                 pbStorage.ProgressColor = UnifiedColors.Unknown;
                 pbStorage.ForeColor = UnifiedColors.DefaultText;
+
+                Debug.WriteLine("[Storage] No usage data available");
             }
         }
 
@@ -497,6 +489,15 @@ namespace CNSysInfo
             return builder.ToString().TrimEnd();
         }
 
+        private class DiskUsageInfo
+        {
+            public bool HasData { get; set; }
+            public ulong TotalBytes { get; set; }
+            public ulong UsedBytes { get; set; }
+            public ulong FreeBytes { get; set; }
+            public int UsagePercentage { get; set; }
+        }
+
         private static string SanitizeFileName(string fileName)
         {
             if (string.IsNullOrWhiteSpace(fileName))
@@ -534,6 +535,94 @@ namespace CNSysInfo
             }
 
             return $"{value:0.##} {suffixes[suffixIndex]}";
+        }
+
+        private DiskUsageInfo GetDisk0Usage()
+        {
+            var usage = new DiskUsageInfo();
+
+            try
+            {
+                ulong totalBytes = 0;
+                ulong freeBytes = 0;
+
+                using (var searcher = new ManagementObjectSearcher("SELECT DeviceID, Size, FreeSpace, DriveType FROM Win32_LogicalDisk WHERE DriveType = 3"))
+                {
+                    foreach (ManagementObject disk in searcher.Get())
+                    {
+                        var deviceId = disk["DeviceID"]?.ToString();
+                        if (string.IsNullOrWhiteSpace(deviceId))
+                            continue;
+
+                        var physicalDiskIndex = GetPhysicalDiskIndexForLogicalDrive(deviceId);
+
+                        if (physicalDiskIndex == 0)
+                        {
+                            if (ulong.TryParse(disk["Size"]?.ToString(), out var sizeBytes) && sizeBytes > 0)
+                            {
+                                ulong free = 0;
+                                ulong.TryParse(disk["FreeSpace"]?.ToString(), out free);
+
+                                totalBytes += sizeBytes;
+                                freeBytes += free;
+
+                                Debug.WriteLine($"[Storage] Found {deviceId}: {FormatBytes(sizeBytes)} total, {FormatBytes(free)} free (Disk {physicalDiskIndex})");
+                            }
+                        }
+                    }
+                }
+
+                if (totalBytes > 0)
+                {
+                    var usedBytes = totalBytes > freeBytes ? totalBytes - freeBytes : 0;
+                    usage.TotalBytes = totalBytes;
+                    usage.FreeBytes = freeBytes;
+                    usage.UsedBytes = usedBytes;
+                    usage.UsagePercentage = (int)Math.Round((double)usedBytes * 100.0 / totalBytes);
+                    usage.HasData = true;
+
+                    Debug.WriteLine($"[Storage] Disk 0 Total: {FormatBytes(totalBytes)}, Used: {FormatBytes(usedBytes)}, Usage: {usage.UsagePercentage}%");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[Storage] Error calculating disk usage: {ex.Message}");
+            }
+
+            return usage;
+        }
+
+        private int GetPhysicalDiskIndexForLogicalDrive(string logicalDriveId)
+        {
+            try
+            {
+                var partitionQuery = $"ASSOCIATORS OF {{Win32_LogicalDisk.DeviceID='{logicalDriveId}'}} WHERE AssocClass = Win32_LogicalDiskToPartition";
+                using (var partitionSearcher = new ManagementObjectSearcher(partitionQuery))
+                {
+                    foreach (ManagementObject partition in partitionSearcher.Get())
+                    {
+                        var partitionId = partition["DeviceID"]?.ToString();
+                        if (string.IsNullOrWhiteSpace(partitionId))
+                            continue;
+
+                        var diskQuery = $"ASSOCIATORS OF {{Win32_DiskPartition.DeviceID='{partitionId}'}} WHERE AssocClass = Win32_DiskDriveToDiskPartition";
+                        using (var diskSearcher = new ManagementObjectSearcher(diskQuery))
+                        {
+                            foreach (ManagementObject disk in diskSearcher.Get())
+                            {
+                                if (int.TryParse(disk["Index"]?.ToString(), out var diskIndex))
+                                    return diskIndex;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[Storage] Error resolving physical disk for {logicalDriveId}: {ex.Message}");
+            }
+
+            return -1;
         }
 
         private static string BuildGpuText(IReadOnlyList<GpuInfo> gpus)
