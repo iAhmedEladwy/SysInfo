@@ -89,7 +89,7 @@ namespace CNSysInfo
             // 
             // txtSerialNumber
             // 
-            this.txtSerialNumber.BackColor = global::CNSysInfo.UnifiedColors.Surface;
+            this.txtSerialNumber.BackColor = System.Drawing.Color.White;
             this.txtSerialNumber.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.txtSerialNumber.Location = new System.Drawing.Point(125, 85);
             this.txtSerialNumber.Margin = new System.Windows.Forms.Padding(2);
@@ -151,7 +151,7 @@ namespace CNSysInfo
             // 
             // txtSystemModel
             // 
-            this.txtSystemModel.BackColor = global::CNSysInfo.UnifiedColors.Surface;
+            this.txtSystemModel.BackColor = System.Drawing.Color.White;
             this.txtSystemModel.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.txtSystemModel.Location = new System.Drawing.Point(125, 53);
             this.txtSystemModel.Margin = new System.Windows.Forms.Padding(2);
@@ -163,7 +163,7 @@ namespace CNSysInfo
             // 
             // txtManufacturer
             // 
-            this.txtManufacturer.BackColor = global::CNSysInfo.UnifiedColors.Surface;
+            this.txtManufacturer.BackColor = System.Drawing.Color.White;
             this.txtManufacturer.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.txtManufacturer.Location = new System.Drawing.Point(125, 21);
             this.txtManufacturer.Margin = new System.Windows.Forms.Padding(2);
@@ -175,7 +175,7 @@ namespace CNSysInfo
             // 
             // txtMemory
             // 
-            this.txtMemory.BackColor = global::CNSysInfo.UnifiedColors.Surface;
+            this.txtMemory.BackColor = System.Drawing.Color.White;
             this.txtMemory.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.txtMemory.Location = new System.Drawing.Point(125, 294);
             this.txtMemory.Margin = new System.Windows.Forms.Padding(2);
@@ -187,7 +187,7 @@ namespace CNSysInfo
             // 
             // txtStorage
             // 
-            this.txtStorage.BackColor = global::CNSysInfo.UnifiedColors.Surface;
+            this.txtStorage.BackColor = System.Drawing.Color.White;
             this.txtStorage.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.txtStorage.Location = new System.Drawing.Point(125, 398);
             this.txtStorage.Margin = new System.Windows.Forms.Padding(2);
@@ -211,7 +211,7 @@ namespace CNSysInfo
             // 
             // txtBatteryHealth
             // 
-            this.txtBatteryHealth.BackColor = global::CNSysInfo.UnifiedColors.Surface;
+            this.txtBatteryHealth.BackColor = System.Drawing.Color.White;
             this.txtBatteryHealth.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.txtBatteryHealth.Location = new System.Drawing.Point(125, 346);
             this.txtBatteryHealth.Margin = new System.Windows.Forms.Padding(2);
@@ -223,9 +223,9 @@ namespace CNSysInfo
             // 
             // btnExport
             // 
-            this.btnExport.BackColor = global::CNSysInfo.UnifiedColors.Surface;
+            this.btnExport.BackColor = System.Drawing.Color.White;
             this.btnExport.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnExport.FlatAppearance.BorderColor = global::CNSysInfo.UnifiedColors.Premium;
+            this.btnExport.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(((int)(((byte)(0)))), ((int)(((byte)(150)))), ((int)(((byte)(136)))));
             this.btnExport.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnExport.Location = new System.Drawing.Point(585, 738);
             this.btnExport.Margin = new System.Windows.Forms.Padding(2);
@@ -248,7 +248,7 @@ namespace CNSysInfo
             // 
             // txtCPU
             // 
-            this.txtCPU.BackColor = global::CNSysInfo.UnifiedColors.Surface;
+            this.txtCPU.BackColor = System.Drawing.Color.White;
             this.txtCPU.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.txtCPU.Location = new System.Drawing.Point(125, 181);
             this.txtCPU.Margin = new System.Windows.Forms.Padding(2);
@@ -270,7 +270,7 @@ namespace CNSysInfo
             // 
             // panel1
             // 
-            this.panel1.BackColor = global::CNSysInfo.UnifiedColors.Premium;
+            this.panel1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(0)))), ((int)(((byte)(120)))), ((int)(((byte)(215)))));
             this.panel1.Location = new System.Drawing.Point(-1, -6);
             this.panel1.Margin = new System.Windows.Forms.Padding(2);
             this.panel1.Name = "panel1";
@@ -279,7 +279,7 @@ namespace CNSysInfo
             // 
             // txtAssetTag
             // 
-            this.txtAssetTag.BackColor = global::CNSysInfo.UnifiedColors.Surface;
+            this.txtAssetTag.BackColor = System.Drawing.Color.White;
             this.txtAssetTag.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.txtAssetTag.Location = new System.Drawing.Point(125, 117);
             this.txtAssetTag.Margin = new System.Windows.Forms.Padding(2);
@@ -374,13 +374,13 @@ namespace CNSysInfo
             // pbBattery
             // 
             this.pbBattery.Font = new System.Drawing.Font("Segoe UI", 8F);
-            this.pbBattery.ForeColor = global::CNSysInfo.UnifiedColors.DefaultText;
+            this.pbBattery.ForeColor = System.Drawing.Color.Black;
             this.pbBattery.Location = new System.Drawing.Point(125, 378);
             this.pbBattery.Margin = new System.Windows.Forms.Padding(4);
             this.pbBattery.Maximum = 100;
             this.pbBattery.Name = "pbBattery";
-            this.pbBattery.ProgressBackColor = global::CNSysInfo.UnifiedColors.ProgressBackground;
-            this.pbBattery.ProgressColor = global::CNSysInfo.UnifiedColors.Unknown;
+            this.pbBattery.ProgressBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(240)))), ((int)(((byte)(240)))));
+            this.pbBattery.ProgressColor = System.Drawing.Color.FromArgb(((int)(((byte)(148)))), ((int)(((byte)(163)))), ((int)(((byte)(184)))));
             this.pbBattery.ShowPercentage = true;
             this.pbBattery.Size = new System.Drawing.Size(606, 15);
             this.pbBattery.TabIndex = 27;
@@ -389,13 +389,13 @@ namespace CNSysInfo
             // pbStorage
             // 
             this.pbStorage.Font = new System.Drawing.Font("Segoe UI", 8F);
-            this.pbStorage.ForeColor = global::CNSysInfo.UnifiedColors.DefaultText;
+            this.pbStorage.ForeColor = System.Drawing.Color.Black;
             this.pbStorage.Location = new System.Drawing.Point(125, 453);
             this.pbStorage.Margin = new System.Windows.Forms.Padding(4);
             this.pbStorage.Maximum = 100;
             this.pbStorage.Name = "pbStorage";
-            this.pbStorage.ProgressBackColor = global::CNSysInfo.UnifiedColors.ProgressBackground;
-            this.pbStorage.ProgressColor = global::CNSysInfo.UnifiedColors.Unknown;
+            this.pbStorage.ProgressBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(240)))), ((int)(((byte)(240)))));
+            this.pbStorage.ProgressColor = System.Drawing.Color.FromArgb(((int)(((byte)(148)))), ((int)(((byte)(163)))), ((int)(((byte)(184)))));
             this.pbStorage.ShowPercentage = true;
             this.pbStorage.Size = new System.Drawing.Size(606, 15);
             this.pbStorage.TabIndex = 28;
@@ -404,13 +404,13 @@ namespace CNSysInfo
             // pbMemory
             // 
             this.pbMemory.Font = new System.Drawing.Font("Segoe UI", 8F);
-            this.pbMemory.ForeColor = global::CNSysInfo.UnifiedColors.DefaultText;
+            this.pbMemory.ForeColor = System.Drawing.Color.Black;
             this.pbMemory.Location = new System.Drawing.Point(125, 326);
             this.pbMemory.Margin = new System.Windows.Forms.Padding(4);
             this.pbMemory.Maximum = 100;
             this.pbMemory.Name = "pbMemory";
-            this.pbMemory.ProgressBackColor = global::CNSysInfo.UnifiedColors.ProgressBackground;
-            this.pbMemory.ProgressColor = global::CNSysInfo.UnifiedColors.Unknown;
+            this.pbMemory.ProgressBackColor = System.Drawing.Color.FromArgb(((int)(((byte)(240)))), ((int)(((byte)(240)))), ((int)(((byte)(240)))));
+            this.pbMemory.ProgressColor = System.Drawing.Color.FromArgb(((int)(((byte)(148)))), ((int)(((byte)(163)))), ((int)(((byte)(184)))));
             this.pbMemory.ShowPercentage = true;
             this.pbMemory.Size = new System.Drawing.Size(606, 15);
             this.pbMemory.TabIndex = 29;
@@ -418,10 +418,10 @@ namespace CNSysInfo
             // 
             // lblSpecRatingValue
             // 
-            this.lblSpecRatingValue.BackColor = global::CNSysInfo.UnifiedColors.Unknown;
+            this.lblSpecRatingValue.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(148)))), ((int)(((byte)(163)))), ((int)(((byte)(184)))));
             this.lblSpecRatingValue.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.lblSpecRatingValue.Font = new System.Drawing.Font("Segoe UI", 9.75F, System.Drawing.FontStyle.Bold);
-            this.lblSpecRatingValue.ForeColor = global::CNSysInfo.UnifiedColors.DefaultText;
+            this.lblSpecRatingValue.ForeColor = System.Drawing.Color.Black;
             this.lblSpecRatingValue.Location = new System.Drawing.Point(128, 473);
             this.lblSpecRatingValue.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.lblSpecRatingValue.Name = "lblSpecRatingValue";
@@ -432,7 +432,7 @@ namespace CNSysInfo
             // 
             // txtScreenInfo
             // 
-            this.txtScreenInfo.BackColor = global::CNSysInfo.UnifiedColors.Surface;
+            this.txtScreenInfo.BackColor = System.Drawing.Color.White;
             this.txtScreenInfo.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.txtScreenInfo.Location = new System.Drawing.Point(125, 262);
             this.txtScreenInfo.Margin = new System.Windows.Forms.Padding(2);
@@ -454,7 +454,7 @@ namespace CNSysInfo
             // 
             // txtGPU
             // 
-            this.txtGPU.BackColor = global::CNSysInfo.UnifiedColors.Surface;
+            this.txtGPU.BackColor = System.Drawing.Color.White;
             this.txtGPU.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.txtGPU.Location = new System.Drawing.Point(125, 213);
             this.txtGPU.Margin = new System.Windows.Forms.Padding(2);
@@ -478,7 +478,7 @@ namespace CNSysInfo
             // 
             // txtBiosVersion
             // 
-            this.txtBiosVersion.BackColor = global::CNSysInfo.UnifiedColors.Surface;
+            this.txtBiosVersion.BackColor = System.Drawing.Color.White;
             this.txtBiosVersion.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.txtBiosVersion.Location = new System.Drawing.Point(125, 149);
             this.txtBiosVersion.Margin = new System.Windows.Forms.Padding(2);
@@ -509,7 +509,7 @@ namespace CNSysInfo
             // 
             // txtUptime
             // 
-            this.txtUptime.BackColor = global::CNSysInfo.UnifiedColors.Surface;
+            this.txtUptime.BackColor = System.Drawing.Color.White;
             this.txtUptime.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.txtUptime.Location = new System.Drawing.Point(6, 88);
             this.txtUptime.Margin = new System.Windows.Forms.Padding(2);
@@ -540,7 +540,7 @@ namespace CNSysInfo
             // 
             // txtUserName
             // 
-            this.txtUserName.BackColor = global::CNSysInfo.UnifiedColors.Surface;
+            this.txtUserName.BackColor = System.Drawing.Color.White;
             this.txtUserName.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.txtUserName.Location = new System.Drawing.Point(419, 120);
             this.txtUserName.Margin = new System.Windows.Forms.Padding(2);
@@ -553,7 +553,7 @@ namespace CNSysInfo
             // 
             // txtPCName
             // 
-            this.txtPCName.BackColor = global::CNSysInfo.UnifiedColors.Surface;
+            this.txtPCName.BackColor = System.Drawing.Color.White;
             this.txtPCName.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.txtPCName.Location = new System.Drawing.Point(6, 120);
             this.txtPCName.Margin = new System.Windows.Forms.Padding(2);
@@ -566,7 +566,7 @@ namespace CNSysInfo
             // 
             // txtWinActivationStatus
             // 
-            this.txtWinActivationStatus.BackColor = global::CNSysInfo.UnifiedColors.Surface;
+            this.txtWinActivationStatus.BackColor = System.Drawing.Color.White;
             this.txtWinActivationStatus.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.txtWinActivationStatus.Location = new System.Drawing.Point(627, 24);
             this.txtWinActivationStatus.Margin = new System.Windows.Forms.Padding(2);
@@ -579,7 +579,7 @@ namespace CNSysInfo
             // 
             // txtTimeZone
             // 
-            this.txtTimeZone.BackColor = global::CNSysInfo.UnifiedColors.Surface;
+            this.txtTimeZone.BackColor = System.Drawing.Color.White;
             this.txtTimeZone.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.txtTimeZone.Location = new System.Drawing.Point(6, 56);
             this.txtTimeZone.Margin = new System.Windows.Forms.Padding(2);
@@ -592,7 +592,7 @@ namespace CNSysInfo
             // 
             // txtOS
             // 
-            this.txtOS.BackColor = global::CNSysInfo.UnifiedColors.Surface;
+            this.txtOS.BackColor = System.Drawing.Color.White;
             this.txtOS.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.txtOS.Location = new System.Drawing.Point(6, 24);
             this.txtOS.Margin = new System.Windows.Forms.Padding(2);
@@ -604,7 +604,7 @@ namespace CNSysInfo
             // 
             // textBox1
             // 
-            this.textBox1.BackColor = global::CNSysInfo.UnifiedColors.Surface;
+            this.textBox1.BackColor = System.Drawing.Color.White;
             this.textBox1.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.textBox1.Location = new System.Drawing.Point(4, 91);
             this.textBox1.Margin = new System.Windows.Forms.Padding(2);
@@ -624,7 +624,7 @@ namespace CNSysInfo
             this.menuStrip1.Location = new System.Drawing.Point(0, 0);
             this.menuStrip1.Name = "menuStrip1";
             this.menuStrip1.RenderMode = System.Windows.Forms.ToolStripRenderMode.System;
-            this.menuStrip1.Size = new System.Drawing.Size(765, 28);
+            this.menuStrip1.Size = new System.Drawing.Size(765, 30);
             this.menuStrip1.TabIndex = 32;
             this.menuStrip1.Text = "menuStrip1";
             // 
@@ -645,7 +645,7 @@ namespace CNSysInfo
             this.forceRebootToolStripMenuItem,
             this.copyToClipboardToolStripMenuItem});
             this.functionsToolStripMenuItem.Name = "functionsToolStripMenuItem";
-            this.functionsToolStripMenuItem.Size = new System.Drawing.Size(126, 24);
+            this.functionsToolStripMenuItem.Size = new System.Drawing.Size(126, 26);
             this.functionsToolStripMenuItem.Text = "Quick Functions";
             // 
             // controlPanelToolStripMenuItem
@@ -753,7 +753,7 @@ namespace CNSysInfo
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(120F, 120F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Dpi;
-            this.BackColor = global::CNSysInfo.UnifiedColors.Background;
+            this.BackColor = System.Drawing.Color.White;
             this.ClientSize = new System.Drawing.Size(765, 786);
             this.Controls.Add(this.lblversion);
             this.Controls.Add(this.gbSoftware);
