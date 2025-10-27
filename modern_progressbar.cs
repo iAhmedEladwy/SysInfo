@@ -12,8 +12,8 @@ namespace CNSysInfo
     {
         private int _value = 0;
         private int _maximum = 100;
-        private Color _progressColor = Color.FromArgb(0, 120, 215);
-        private Color _backgroundColor = Color.FromArgb(240, 240, 240);
+        private Color _progressColor = UnifiedColors.Unknown;
+        private Color _backgroundColor = UnifiedColors.ProgressBackground;
         private string _text = "";
         private bool _showPercentage = true;
 

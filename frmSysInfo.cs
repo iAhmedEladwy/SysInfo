@@ -199,8 +199,8 @@ namespace CNSysInfo
             txtOS.Text = "Loading...";
             txtBatteryHealth.Text = "Loading...";
             lblSpecRatingValue.Text = "Evaluating...";
-            lblSpecRatingValue.BackColor = Color.LightGray;
-            lblSpecRatingValue.ForeColor = Color.Black;
+            lblSpecRatingValue.BackColor = UnifiedColors.Unknown;
+            lblSpecRatingValue.ForeColor = UnifiedColors.DefaultText;
 
             // Set MaximumSize to the current screen size for better adaptation
             this.MaximumSize = Screen.PrimaryScreen.WorkingArea.Size;
@@ -221,7 +221,7 @@ namespace CNSysInfo
             try
             {
                 var exportDirectory = EnsureExportDirectory();
-                var baseFileName = $"SysInfo_{_currentSnapshot.MachineName}_{_currentSnapshot.CapturedAt:yyyyMMdd_HHmmss}";
+                var baseFileName = $"SysInfo_{SanitizeFileName(_currentSnapshot.SystemModel)}_{SanitizeFileName(_currentSnapshot.SerialNumber)}_{_currentSnapshot.CapturedAt:yyyyMMdd_HHmmss}";
                 var textFilePath = Path.Combine(exportDirectory, baseFileName + ".txt");
                 var screenshotPath = Path.Combine(exportDirectory, baseFileName + ".png");
 
@@ -311,17 +311,30 @@ namespace CNSysInfo
 
             // Update memory progress bar - calculate usage percentage
             int memoryUsagePercent = CalculateMemoryUsagePercentage(snapshot);
+            memoryUsagePercent = Math.Max(0, Math.Min(100, memoryUsagePercent));
             pbMemory.Value = memoryUsagePercent;
             pbMemory.Text = $"{memoryUsagePercent}%";
+            var memoryTier = UnifiedColors.GetMemoryUsageTier(memoryUsagePercent);
+            pbMemory.ProgressColor = UnifiedColors.GetBackgroundForTier(memoryTier);
+            pbMemory.ForeColor = UnifiedColors.GetTextForTier(memoryTier);
 
             // Storage with progress bar
             var storageHealth = StorageHealthService.GetStorageHealth("0");
+            var storageUsage = StorageHealthService.CalculateDiskUsage("0");
             var storageDetails = BuildStorageText(snapshot.Disks);
             txtStorage.Text = string.IsNullOrWhiteSpace(storageDetails)
                 ? "No disks detected."
                 : storageDetails;
 
-            UpdateStorageProgress(storageHealth);
+            if (storageUsage.HasData)
+            {
+                var usageSummary = $"Disk0 Usage: {FormatBytes(storageUsage.UsedBytes)} used / {FormatBytes(storageUsage.TotalBytes)} total ({storageUsage.UsagePercentage}% used)";
+                txtStorage.Text = string.IsNullOrWhiteSpace(txtStorage.Text)
+                    ? usageSummary
+                    : $"{txtStorage.Text}{Environment.NewLine}{usageSummary}";
+            }
+
+            UpdateStorageProgress(storageHealth, storageUsage);
 
             // Battery with progress bar
             txtBatteryHealth.Text = BuildBatteryText(snapshot.BatteryInfo);
@@ -329,21 +342,20 @@ namespace CNSysInfo
             // Update battery progress bar
             if (snapshot.BatteryInfo != null)
             {
-                pbBattery.Value = snapshot.BatteryInfo.HealthPercentage;
+                var batteryValue = Math.Max(0, Math.Min(100, snapshot.BatteryInfo.HealthPercentage));
+                pbBattery.Value = batteryValue;
                 pbBattery.Text = $"{snapshot.BatteryInfo.HealthPercentage}%";
 
-                // Change color based on battery health
-                if (snapshot.BatteryInfo.HealthPercentage >= 80)
-                    pbBattery.ProgressColor = Color.FromArgb(16, 185, 129); // Green
-                else if (snapshot.BatteryInfo.HealthPercentage >= 60)
-                    pbBattery.ProgressColor = Color.FromArgb(245, 158, 11); // Orange
-                else
-                    pbBattery.ProgressColor = Color.FromArgb(239, 68, 68); // Red
+                var batteryTier = UnifiedColors.GetHealthTier(snapshot.BatteryInfo.HealthPercentage);
+                pbBattery.ProgressColor = UnifiedColors.GetBackgroundForTier(batteryTier);
+                pbBattery.ForeColor = UnifiedColors.GetTextForTier(batteryTier);
             }
             else
             {
                 pbBattery.Value = 0;
                 pbBattery.Text = "N/A";
+                pbBattery.ProgressColor = UnifiedColors.Unknown;
+                pbBattery.ForeColor = UnifiedColors.DefaultText;
             }
 
             txtCPU.Text = BuildCpuText(snapshot);
@@ -359,67 +371,73 @@ namespace CNSysInfo
 
             UpdateSpecRating(snapshot);
         }
-private int CalculateMemoryUsagePercentage(SystemInfoSnapshot snapshot)
-{
-    try
-    {
-        // Extract total memory in GB
-        var match = System.Text.RegularExpressions.Regex.Match(
-            snapshot.UsablePhysicalMemory, 
-            @"([\d.]+)\s*GB");
-        
-        if (match.Success && double.TryParse(match.Groups[1].Value, out double totalGB))
+
+        private int CalculateMemoryUsagePercentage(SystemInfoSnapshot snapshot)
         {
-            // Get current memory usage from Performance Counter
-            using (var memCounter = new System.Diagnostics.PerformanceCounter("Memory", "Available MBytes"))
+            try
             {
-                float availableMB = memCounter.NextValue();
-                float totalMB = (float)(totalGB * 1024);
-                float usedMB = totalMB - availableMB;
-                int usagePercent = (int)((usedMB / totalMB) * 100);
-                
-                return Math.Max(0, Math.Min(100, usagePercent));
+                // Extract total memory in GB
+                var match = System.Text.RegularExpressions.Regex.Match(
+                    snapshot.UsablePhysicalMemory,
+                    @"([\d.]+)\s*GB");
+
+                if (match.Success && double.TryParse(match.Groups[1].Value, out double totalGB))
+                {
+                    // Get current memory usage from Performance Counter
+                    using (var memCounter = new System.Diagnostics.PerformanceCounter("Memory", "Available MBytes"))
+                    {
+                        float availableMB = memCounter.NextValue();
+                        float totalMB = (float)(totalGB * 1024);
+                        float usedMB = totalMB - availableMB;
+                        int usagePercent = (int)((usedMB / totalMB) * 100);
+
+                        return Math.Max(0, Math.Min(100, usagePercent));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Error calculating memory usage: {ex.Message}");
+            }
+
+            return 0; // Default if calculation fails
+        }
+
+        private void UpdateStorageProgress(StorageHealthInfo storageHealth, DiskUsageInfo usageInfo)
+        {
+            if (usageInfo != null && usageInfo.HasData)
+            {
+                int usagePercent = Math.Max(0, Math.Min(100, usageInfo.UsagePercentage));
+                pbStorage.Value = usagePercent;
+                pbStorage.Text = $"{usagePercent}% Used";
+
+                var usageTier = UnifiedColors.GetMemoryUsageTier(usagePercent);
+                pbStorage.ProgressColor = UnifiedColors.GetBackgroundForTier(usageTier);
+                pbStorage.ForeColor = UnifiedColors.GetTextForTier(usageTier);
+                return;
+            }
+
+            int healthPercentage = storageHealth?.HealthPercentage ?? -1;
+
+            if (healthPercentage >= 0)
+            {
+                healthPercentage = Math.Max(0, Math.Min(100, healthPercentage));
+                pbStorage.Value = healthPercentage;
+                pbStorage.Text = $"{healthPercentage}%";
+
+                var storageTier = UnifiedColors.GetHealthTier(healthPercentage);
+                pbStorage.ProgressColor = UnifiedColors.GetBackgroundForTier(storageTier);
+                pbStorage.ForeColor = UnifiedColors.GetTextForTier(storageTier);
+            }
+            else
+            {
+                pbStorage.Value = 0;
+                pbStorage.Text = "N/A";
+                pbStorage.ProgressColor = UnifiedColors.Unknown;
+                pbStorage.ForeColor = UnifiedColors.DefaultText;
             }
         }
-    }
-    catch (Exception ex)
-    {
-        Debug.WriteLine($"Error calculating memory usage: {ex.Message}");
-    }
-    
-    return 0; // Default if calculation fails
-}
 
-private void UpdateStorageProgress(StorageHealthInfo storageHealth)
-{
-    int healthPercentage = storageHealth?.HealthPercentage ?? -1;
-
-    if (healthPercentage >= 0)
-    {
-        healthPercentage = Math.Max(0, Math.Min(100, healthPercentage));
-        pbStorage.Value = healthPercentage;
-        pbStorage.Text = string.Empty; // use default percentage rendering
-
-        if (healthPercentage > 80)
-        {
-            pbStorage.ProgressColor = Color.FromArgb(16, 185, 129); // Green
-        }
-        else if (healthPercentage >= 50)
-        {
-            pbStorage.ProgressColor = Color.FromArgb(245, 158, 11); // Yellow
-        }
-        else
-        {
-            pbStorage.ProgressColor = Color.FromArgb(239, 68, 68); // Red
-        }
-    }
-    else
-    {
-        pbStorage.Value = 0;
-        pbStorage.Text = "N/A";
-        pbStorage.ProgressColor = Color.FromArgb(148, 163, 184); // Neutral gray for unknown
-    }
-}
         private static string BuildCpuText(SystemInfoSnapshot snapshot)
         {
             if (snapshot == null)
@@ -477,6 +495,45 @@ private void UpdateStorageProgress(StorageHealthInfo storageHealth)
             }
 
             return builder.ToString().TrimEnd();
+        }
+
+        private static string SanitizeFileName(string fileName)
+        {
+            if (string.IsNullOrWhiteSpace(fileName))
+                return "Unknown";
+
+            var invalid = Path.GetInvalidFileNameChars();
+            var sanitized = fileName;
+
+            foreach (var c in invalid)
+            {
+                sanitized = sanitized.Replace(c, '_');
+            }
+
+            sanitized = sanitized.Replace(' ', '_');
+
+            if (sanitized.Length > 50)
+                sanitized = sanitized.Substring(0, 50);
+
+            return sanitized;
+        }
+
+        private static string FormatBytes(ulong bytes)
+        {
+            if (bytes == 0)
+                return "0 B";
+
+            string[] suffixes = { "B", "KB", "MB", "GB", "TB", "PB" };
+            double value = bytes;
+            int suffixIndex = 0;
+
+            while (value >= 1024 && suffixIndex < suffixes.Length - 1)
+            {
+                value /= 1024;
+                suffixIndex++;
+            }
+
+            return $"{value:0.##} {suffixes[suffixIndex]}";
         }
 
         private static string BuildGpuText(IReadOnlyList<GpuInfo> gpus)
@@ -739,40 +796,40 @@ private void UpdateStorageProgress(StorageHealthInfo storageHealth)
             {
                 case SpecRatingLevel.PremiumPerformance:
                     lblSpecRatingValue.Text = "✓ Premium Performance - Excellent for demanding workloads";
-                    lblSpecRatingValue.BackColor = Color.FromArgb(100, 149, 237); // Cornflower Blue
-                    lblSpecRatingValue.ForeColor = Color.White;
+                    lblSpecRatingValue.BackColor = UnifiedColors.Premium;
+                    lblSpecRatingValue.ForeColor = UnifiedColors.PremiumText;
                     break;
 
                 case SpecRatingLevel.ModernStandard:
                     lblSpecRatingValue.Text = "✓ Modern Standard - Ready for everyday tasks";
-                    lblSpecRatingValue.BackColor = Color.FromArgb(144, 238, 144); // Light Green
-                    lblSpecRatingValue.ForeColor = Color.DarkGreen;
+                    lblSpecRatingValue.BackColor = UnifiedColors.Good;
+                    lblSpecRatingValue.ForeColor = UnifiedColors.GoodText;
                     break;
 
                 case SpecRatingLevel.AdequatePerformance:
                     lblSpecRatingValue.Text = "⚠ Adequate Performance" +
                         (string.IsNullOrEmpty(upgradeRecommendations) ? "" : " - Consider: " + upgradeRecommendations);
-                    lblSpecRatingValue.BackColor = Color.FromArgb(255, 200, 124); // Light Orange
-                    lblSpecRatingValue.ForeColor = Color.FromArgb(139, 69, 19); // SaddleBrown
+                    lblSpecRatingValue.BackColor = UnifiedColors.Adequate;
+                    lblSpecRatingValue.ForeColor = UnifiedColors.AdequateText;
                     break;
 
                 case SpecRatingLevel.BelowStandard:
                     lblSpecRatingValue.Text = "⚠ Below Standard - Upgrade: " +
                         (string.IsNullOrEmpty(upgradeRecommendations) ? "Multiple components" : upgradeRecommendations);
-                    lblSpecRatingValue.BackColor = Color.FromArgb(255, 165, 79); // Coral
-                    lblSpecRatingValue.ForeColor = Color.DarkRed;
+                    lblSpecRatingValue.BackColor = UnifiedColors.BelowStandard;
+                    lblSpecRatingValue.ForeColor = UnifiedColors.BelowStandardText;
                     break;
 
                 case SpecRatingLevel.LegacySystem:
                     lblSpecRatingValue.Text = "✗ Legacy System - Full system upgrade strongly recommended";
-                    lblSpecRatingValue.BackColor = Color.FromArgb(255, 182, 193); // Light Pink
-                    lblSpecRatingValue.ForeColor = Color.DarkRed;
+                    lblSpecRatingValue.BackColor = UnifiedColors.Critical;
+                    lblSpecRatingValue.ForeColor = UnifiedColors.CriticalText;
                     break;
 
                 default:
                     lblSpecRatingValue.Text = "Unable to determine";
-                    lblSpecRatingValue.BackColor = Color.LightGray;
-                    lblSpecRatingValue.ForeColor = Color.Black;
+                    lblSpecRatingValue.BackColor = UnifiedColors.Unknown;
+                    lblSpecRatingValue.ForeColor = UnifiedColors.DefaultText;
                     break;
             }
         }
@@ -1088,5 +1145,142 @@ private void UpdateStorageProgress(StorageHealthInfo storageHealth)
         }
 
         #endregion
+    }
+
+    public static class UnifiedColors
+    {
+        public enum StatusTier
+        {
+            Unknown,
+            Premium,
+            Good,
+            Adequate,
+            BelowStandard,
+            Critical
+        }
+
+        public static readonly Color Premium = Color.FromArgb(100, 149, 237); // Cornflower Blue
+        public static readonly Color Good = Color.FromArgb(144, 238, 144); // Light Green
+        public static readonly Color Adequate = Color.FromArgb(255, 200, 124); // Light Orange
+        public static readonly Color BelowStandard = Color.FromArgb(255, 165, 79); // Coral
+        public static readonly Color Critical = Color.FromArgb(255, 182, 193); // Light Pink
+        public static readonly Color Unknown = Color.FromArgb(148, 163, 184); // Slate Gray
+
+        public static readonly Color Background = Color.FromArgb(240, 240, 240); // Light Gray
+        public static readonly Color Surface = Color.White;
+
+        public static readonly Color PremiumText = Color.White;
+        public static readonly Color GoodText = Color.DarkGreen; // RGB(0, 100, 0)
+        public static readonly Color AdequateText = Color.FromArgb(139, 69, 19); // SaddleBrown
+        public static readonly Color BelowStandardText = Color.DarkRed; // RGB(139, 0, 0)
+        public static readonly Color CriticalText = Color.DarkRed;
+        public static readonly Color DefaultText = Color.Black;
+
+        public static readonly Color ProgressBackground = Background;
+
+        public static StatusTier GetHealthTier(int? percentage)
+        {
+            if (!percentage.HasValue)
+            {
+                return StatusTier.Unknown;
+            }
+
+            var value = ClampPercentage(percentage.Value);
+            if (value >= 90)
+            {
+                return StatusTier.Premium;
+            }
+
+            if (value >= 80)
+            {
+                return StatusTier.Good;
+            }
+
+            if (value >= 60)
+            {
+                return StatusTier.Adequate;
+            }
+
+            if (value >= 40)
+            {
+                return StatusTier.BelowStandard;
+            }
+
+            return StatusTier.Critical;
+        }
+
+        public static StatusTier GetMemoryUsageTier(int? percentage)
+        {
+            if (!percentage.HasValue)
+            {
+                return StatusTier.Unknown;
+            }
+
+            var value = ClampPercentage(percentage.Value);
+            if (value >= 90)
+            {
+                return StatusTier.Critical;
+            }
+
+            if (value >= 75)
+            {
+                return StatusTier.BelowStandard;
+            }
+
+            if (value >= 60)
+            {
+                return StatusTier.Adequate;
+            }
+
+            if (value >= 40)
+            {
+                return StatusTier.Good;
+            }
+
+            return StatusTier.Premium;
+        }
+
+        public static Color GetBackgroundForTier(StatusTier tier)
+        {
+            return tier switch
+            {
+                StatusTier.Premium => Premium,
+                StatusTier.Good => Good,
+                StatusTier.Adequate => Adequate,
+                StatusTier.BelowStandard => BelowStandard,
+                StatusTier.Critical => Critical,
+                StatusTier.Unknown => Unknown,
+                _ => Unknown
+            };
+        }
+
+        public static Color GetTextForTier(StatusTier tier)
+        {
+            return tier switch
+            {
+                StatusTier.Premium => PremiumText,
+                StatusTier.Good => GoodText,
+                StatusTier.Adequate => AdequateText,
+                StatusTier.BelowStandard => BelowStandardText,
+                StatusTier.Critical => CriticalText,
+                StatusTier.Unknown => DefaultText,
+                _ => DefaultText
+            };
+        }
+
+        private static int ClampPercentage(int value)
+        {
+            if (value < 0)
+            {
+                return 0;
+            }
+
+            if (value > 100)
+            {
+                return 100;
+            }
+
+            return value;
+        }
     }
 }

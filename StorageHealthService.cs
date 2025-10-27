@@ -109,6 +109,98 @@ namespace CNSysInfo
             return health;
         }
 
+        public static DiskUsageInfo CalculateDiskUsage(string diskIndex = "0")
+        {
+            var usage = new DiskUsageInfo();
+
+            if (!int.TryParse(diskIndex, out var index))
+                return usage;
+
+            try
+            {
+                var deviceId = ResolveDiskDeviceId(index);
+                if (string.IsNullOrWhiteSpace(deviceId))
+                    return usage;
+
+                var escapedDeviceId = EscapeWmiValue(deviceId);
+                ulong totalBytes = 0;
+                ulong freeBytes = 0;
+                var seenLogicalDisks = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                var partitionQuery = $"ASSOCIATORS OF {{Win32_DiskDrive.DeviceID='{escapedDeviceId}'}} WHERE AssocClass = Win32_DiskDriveToDiskPartition";
+                using (var partitionSearcher = new ManagementObjectSearcher(partitionQuery))
+                {
+                    foreach (ManagementObject partition in partitionSearcher.Get())
+                    {
+                        var partitionId = partition["DeviceID"]?.ToString();
+                        if (string.IsNullOrWhiteSpace(partitionId))
+                            continue;
+
+                        var escapedPartitionId = EscapeWmiValue(partitionId);
+                        var logicalQuery = $"ASSOCIATORS OF {{Win32_DiskPartition.DeviceID='{escapedPartitionId}'}} WHERE AssocClass = Win32_LogicalDiskToPartition";
+                        using (var logicalSearcher = new ManagementObjectSearcher(logicalQuery))
+                        {
+                            foreach (ManagementObject logicalDisk in logicalSearcher.Get())
+                            {
+                                var logicalDeviceId = logicalDisk["DeviceID"]?.ToString();
+                                if (string.IsNullOrWhiteSpace(logicalDeviceId))
+                                    continue;
+
+                                if (!seenLogicalDisks.Add(logicalDeviceId))
+                                    continue;
+
+                                var logicalInfoQuery = $"SELECT DeviceID, Size, FreeSpace FROM Win32_LogicalDisk WHERE DeviceID='{logicalDeviceId}' AND DriveType=3";
+                                using (var logicalInfoSearcher = new ManagementObjectSearcher(logicalInfoQuery))
+                                {
+                                    foreach (ManagementObject logicalInfo in logicalInfoSearcher.Get())
+                                    {
+                                        if (!ulong.TryParse(logicalInfo["Size"]?.ToString(), out var sizeBytes) || sizeBytes == 0)
+                                            continue;
+
+                                        ulong free = 0;
+                                        ulong.TryParse(logicalInfo["FreeSpace"]?.ToString(), out free);
+                                        if (free > sizeBytes)
+                                            free = sizeBytes;
+
+                                        totalBytes += sizeBytes;
+                                        freeBytes += free;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (totalBytes > 0)
+                {
+                    var usedBytes = totalBytes > freeBytes ? totalBytes - freeBytes : 0;
+                    usage.TotalBytes = totalBytes;
+                    usage.FreeBytes = freeBytes;
+                    usage.UsedBytes = usedBytes;
+                    usage.UsagePercentage = (int)Math.Round((double)usedBytes * 100d / totalBytes);
+                    if (usage.UsagePercentage < 0)
+                    {
+                        usage.UsagePercentage = 0;
+                    }
+                    else if (usage.UsagePercentage > 100)
+                    {
+                        usage.UsagePercentage = 100;
+                    }
+                    usage.HasData = true;
+                }
+            }
+            catch (ManagementException ex)
+            {
+                Debug.WriteLine($"[StorageHealthService] Failed to calculate disk usage: {ex.Message}");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                Debug.WriteLine($"[StorageHealthService] Access denied while calculating disk usage: {ex.Message}");
+            }
+
+            return usage;
+        }
+
         private static Dictionary<int, SmartAttribute> ParseSmartAttributes(byte[] smartData)
         {
             var attributes = new Dictionary<int, SmartAttribute>();
@@ -279,6 +371,41 @@ namespace CNSysInfo
             return -1;
         }
 
+        private static string ResolveDiskDeviceId(int diskIndex)
+        {
+            try
+            {
+                var query = $"SELECT DeviceID FROM Win32_DiskDrive WHERE Index = {diskIndex}";
+                using (var searcher = new ManagementObjectSearcher(query))
+                {
+                    foreach (ManagementObject disk in searcher.Get())
+                    {
+                        var id = disk["DeviceID"]?.ToString();
+                        if (!string.IsNullOrWhiteSpace(id))
+                            return id;
+                    }
+                }
+            }
+            catch (ManagementException ex)
+            {
+                Debug.WriteLine($"[StorageHealthService] Failed to resolve disk DeviceID: {ex.Message}");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                Debug.WriteLine($"[StorageHealthService] Access denied resolving disk DeviceID: {ex.Message}");
+            }
+
+            return string.Empty;
+        }
+
+        private static string EscapeWmiValue(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+                return string.Empty;
+
+            return value.Replace("\\", "\\\\").Replace("'", "\\'");
+        }
+
         private static string GetHealthStatusText(int healthPercentage)
         {
             if (healthPercentage < 0)
@@ -393,6 +520,15 @@ namespace CNSysInfo
         public int PowerOnHours { get; set; }
         public int HealthPercentage { get; set; }
         public bool IsSsd { get; set; }
+    }
+
+    internal class DiskUsageInfo
+    {
+        public bool HasData { get; set; }
+        public ulong TotalBytes { get; set; }
+        public ulong UsedBytes { get; set; }
+        public ulong FreeBytes { get; set; }
+        public int UsagePercentage { get; set; }
     }
 
     internal readonly struct SmartAttribute

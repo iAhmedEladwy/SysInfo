@@ -47,27 +47,32 @@ namespace CNSysInfo
         /// </summary>
         public static Color GetIconColor(string iconCategory)
         {
-            switch (iconCategory)
+            if (string.IsNullOrWhiteSpace(iconCategory))
+            {
+                return UnifiedColors.Unknown;
+            }
+
+            switch (iconCategory.Trim().ToLowerInvariant())
             {
                 case "cpu":
                 case "processor":
-                    return Color.FromArgb(59, 130, 246); // Blue
+                    return UnifiedColors.Premium;
                 case "memory":
                 case "ram":
-                    return Color.FromArgb(139, 92, 246); // Purple
+                    return UnifiedColors.Good;
                 case "storage":
                 case "disk":
-                    return Color.FromArgb(16, 185, 129); // Green
+                    return UnifiedColors.Adequate;
                 case "gpu":
                 case "graphics":
-                    return Color.FromArgb(239, 68, 68); // Red
+                    return UnifiedColors.Critical;
                 case "battery":
-                    return Color.FromArgb(251, 191, 36); // Amber
+                    return UnifiedColors.Good;
                 case "screen":
                 case "monitor":
-                    return Color.FromArgb(6, 182, 212); // Cyan
+                    return UnifiedColors.Premium;
                 default:
-                    return Color.FromArgb(107, 114, 128); // Gray
+                    return UnifiedColors.Unknown;
             }
         }
 
@@ -76,14 +81,8 @@ namespace CNSysInfo
         /// </summary>
         public static Color GetHealthColor(int percentage)
         {
-            if (percentage >= 80)
-                return Color.FromArgb(34, 197, 94); // Green
-            else if (percentage >= 60)
-                return Color.FromArgb(234, 179, 8); // Yellow
-            else if (percentage >= 40)
-                return Color.FromArgb(249, 115, 22); // Orange
-            else
-                return Color.FromArgb(239, 68, 68); // Red
+            var tier = UnifiedColors.GetHealthTier(percentage);
+            return UnifiedColors.GetBackgroundForTier(tier);
         }
 
         /// <summary>
