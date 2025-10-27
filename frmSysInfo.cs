@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -35,9 +35,11 @@ namespace CNSysInfo
         private enum SpecRatingLevel
         {
             Unknown,
-            Approved,
-            Low,
-            Obsolete
+            PremiumPerformance,  // New: Win11 CPU + NVMe + 16GB+
+            ModernStandard,      // Changed from "Approved": Win11 CPU + Any SSD + 16GB+
+            AdequatePerformance, // Changed from "Low": Has deficiencies but usable
+            BelowStandard,       // New: Single critical issue
+            LegacySystem        // Changed from "Obsolete": Multiple critical issues
         }
 
         private enum StorageKind
@@ -536,7 +538,7 @@ private void UpdateStorageProgress(StorageHealthInfo storageHealth)
         {
             if (snapshot == null)
             {
-                ApplySpecRating(SpecRatingLevel.Low);
+                ApplySpecRating(SpecRatingLevel.AdequatePerformance);
                 return;
             }
 
@@ -676,56 +678,156 @@ private void UpdateStorageProgress(StorageHealthInfo storageHealth)
         }
 
         private static SpecRatingLevel EvaluateSpecRating(
-            CpuSupportLevel cpuSupport,
-            bool hasCpuData,
-            double memoryGb,
-            bool hasMemoryData,
-            StorageKind storageKind,
-            bool hasDiskData)
+         CpuSupportLevel cpuSupport,
+         bool hasCpuData,
+         double memoryGb,
+         bool hasMemoryData,
+         StorageKind storageKind,
+         bool hasDiskData)
         {
-            if ((hasCpuData && cpuSupport == CpuSupportLevel.Unsupported) ||
-                (hasMemoryData && memoryGb > 0 && memoryGb <= 8) ||
-                (hasDiskData && storageKind == StorageKind.Hdd))
-            {
-                return SpecRatingLevel.Obsolete;
-            }
-
+            // Premium Performance: Win11 CPU + NVMe + 16GB+
             if (cpuSupport == CpuSupportLevel.Supported &&
                 hasMemoryData && hasDiskData &&
                 memoryGb >= 16 &&
                 storageKind == StorageKind.Nvme)
             {
-                return SpecRatingLevel.Approved;
+                return SpecRatingLevel.PremiumPerformance;
             }
 
-            return SpecRatingLevel.Low;
+            // Modern Standard: Win11 CPU + Any SSD + 16GB+
+            if (cpuSupport == CpuSupportLevel.Supported &&
+                hasMemoryData && hasDiskData &&
+                memoryGb >= 16 &&
+                (storageKind == StorageKind.Nvme || storageKind == StorageKind.SataSsd))
+            {
+                return SpecRatingLevel.ModernStandard;
+            }
+
+            // Count critical deficiencies for Legacy System detection
+            bool hasUnsupportedCpu = hasCpuData && cpuSupport == CpuSupportLevel.Unsupported;
+            bool hasCriticallyLowMemory = hasMemoryData && memoryGb > 0 && memoryGb <= 4;
+            bool hasHdd = hasDiskData && storageKind == StorageKind.Hdd;
+
+            int criticalDeficiencies = 0;
+            if (hasUnsupportedCpu) criticalDeficiencies++;
+            if (hasCriticallyLowMemory) criticalDeficiencies++;
+            if (hasHdd) criticalDeficiencies++;
+
+            // Legacy System: 2 or more critical deficiencies
+            if (criticalDeficiencies >= 2)
+            {
+                return SpecRatingLevel.LegacySystem;
+            }
+
+            // Below Standard: Single critical deficiency OR Win11 CPU with very low RAM
+            if (hasUnsupportedCpu ||
+                hasCriticallyLowMemory ||
+                (cpuSupport == CpuSupportLevel.Supported && hasMemoryData && memoryGb > 0 && memoryGb <= 6))
+            {
+                return SpecRatingLevel.BelowStandard;
+            }
+
+            // Adequate Performance: Everything else
+            return SpecRatingLevel.AdequatePerformance;
         }
 
         private void ApplySpecRating(SpecRatingLevel level)
         {
+            var upgradeRecommendations = BuildUpgradeRecommendations();
+
             switch (level)
             {
-                case SpecRatingLevel.Approved:
-                    lblSpecRatingValue.Text = "Approved for Modern Work";
-                    lblSpecRatingValue.BackColor = Color.FromArgb(144, 238, 144);
+                case SpecRatingLevel.PremiumPerformance:
+                    lblSpecRatingValue.Text = "✓ Premium Performance - Excellent for demanding workloads";
+                    lblSpecRatingValue.BackColor = Color.FromArgb(100, 149, 237); // Cornflower Blue
+                    lblSpecRatingValue.ForeColor = Color.White;
+                    break;
+
+                case SpecRatingLevel.ModernStandard:
+                    lblSpecRatingValue.Text = "✓ Modern Standard - Ready for everyday tasks";
+                    lblSpecRatingValue.BackColor = Color.FromArgb(144, 238, 144); // Light Green
                     lblSpecRatingValue.ForeColor = Color.DarkGreen;
                     break;
-                case SpecRatingLevel.Low:
-                    lblSpecRatingValue.Text = "Low - Consider Upgrade";
-                    lblSpecRatingValue.BackColor = Color.FromArgb(255, 255, 153);
-                    lblSpecRatingValue.ForeColor = Color.DarkOrange;
+
+                case SpecRatingLevel.AdequatePerformance:
+                    lblSpecRatingValue.Text = "⚠ Adequate Performance" +
+                        (string.IsNullOrEmpty(upgradeRecommendations) ? "" : " - Consider: " + upgradeRecommendations);
+                    lblSpecRatingValue.BackColor = Color.FromArgb(255, 200, 124); // Light Orange
+                    lblSpecRatingValue.ForeColor = Color.FromArgb(139, 69, 19); // SaddleBrown
                     break;
-                case SpecRatingLevel.Obsolete:
-                    lblSpecRatingValue.Text = "Obsolete - Upgrade Recommended";
-                    lblSpecRatingValue.BackColor = Color.FromArgb(255, 182, 193);
+
+                case SpecRatingLevel.BelowStandard:
+                    lblSpecRatingValue.Text = "⚠ Below Standard - Upgrade: " +
+                        (string.IsNullOrEmpty(upgradeRecommendations) ? "Multiple components" : upgradeRecommendations);
+                    lblSpecRatingValue.BackColor = Color.FromArgb(255, 165, 79); // Coral
                     lblSpecRatingValue.ForeColor = Color.DarkRed;
                     break;
+
+                case SpecRatingLevel.LegacySystem:
+                    lblSpecRatingValue.Text = "✗ Legacy System - Full system upgrade strongly recommended";
+                    lblSpecRatingValue.BackColor = Color.FromArgb(255, 182, 193); // Light Pink
+                    lblSpecRatingValue.ForeColor = Color.DarkRed;
+                    break;
+
                 default:
                     lblSpecRatingValue.Text = "Unable to determine";
                     lblSpecRatingValue.BackColor = Color.LightGray;
                     lblSpecRatingValue.ForeColor = Color.Black;
                     break;
             }
+        }
+
+        private string BuildUpgradeRecommendations()
+        {
+            if (_currentSnapshot == null)
+                return string.Empty;
+
+            var recommendations = new List<string>();
+            var cpuSupport = CpuSupportEvaluator.Evaluate(_currentSnapshot);
+            var memoryGb = ExtractMemoryInGigabytes(_currentSnapshot.InstalledPhysicalMemory);
+            var primaryDisk = ResolvePrimaryDisk(_currentSnapshot.Disks);
+            var storageKind = ClassifyStorageKind(primaryDisk);
+
+            // Priority 1: CPU (most impactful for system longevity)
+            if (cpuSupport == CpuSupportLevel.Unsupported)
+            {
+                recommendations.Add("CPU (Win11 incompatible)");
+            }
+
+            // Priority 2: RAM (if critically low)
+            if (memoryGb > 0 && memoryGb < 8)
+            {
+                int targetGb = memoryGb <= 4 ? 16 : 12;
+                int neededGb = targetGb - (int)memoryGb;
+                recommendations.Add($"RAM (add {neededGb}GB to reach {targetGb}GB)");
+            }
+            else if (memoryGb >= 8 && memoryGb < 16)
+            {
+                int neededGb = 16 - (int)memoryGb;
+                recommendations.Add($"RAM (add {neededGb}GB to reach 16GB)");
+            }
+
+            // Priority 3: Storage type
+            if (storageKind == StorageKind.Hdd)
+            {
+                // Suggest appropriate upgrade based on other components
+                if (cpuSupport == CpuSupportLevel.Supported && memoryGb >= 16)
+                {
+                    recommendations.Add("Storage (upgrade to NVMe SSD)");
+                }
+                else
+                {
+                    recommendations.Add("Storage (upgrade to SSD)");
+                }
+            }
+            else if (storageKind == StorageKind.SataSsd &&
+                     cpuSupport == CpuSupportLevel.Supported &&
+                     memoryGb >= 16)
+            {
+                recommendations.Add("Storage (consider NVMe for premium performance)");
+            }
+
+            return string.Join(", ", recommendations);
         }
 
         #endregion
