@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- .NET Framework 4.7: preinstalled on every Windows 10 (1703+) and Windows 11 - nothing to download. -->
+    <TargetFramework>net47</TargetFramework>
+    <OutputType>WinExe</OutputType>
+    <ApplicationIcon>info.ico</ApplicationIcon>
+    <AssemblyName>SysInfo</AssemblyName>
+    <RootNamespace>CNSysInfo</RootNamespace>
+    <LangVersion>12</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Version>2.2.2</Version>
+    <NoWarn>$(NoWarn);CS8632</NoWarn>
+    <ApplicationManifest>Properties\app.manifest</ApplicationManifest>
+    <AppConfig>app.config</AppConfig>
+    <DefaultItemExcludes>$(DefaultItemExcludes);..\SysInfo.Tests\**</DefaultItemExcludes>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- WPF + the inbox .NET Framework assemblies the app uses -->
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="WindowsBase" />
+    <Reference Include="System.Xaml" />
+    <Reference Include="System.Management" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Reference assemblies so the net48 build works on this Linux build machine too. -->
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Embedded under the plain name so pack://application:,,,/info.ico resolves (same as the WPF Resource item). -->
+    <EmbeddedResource Include="info.ico">
+      <LogicalName>info.ico</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,7 @@
+# 2 byte revision then 12 byte entries: id, flags(2), current, worst, raw(6), reserved
+# Entries: 09 power-on hours raw=0x2710 (10000 h), 0C power cycles, 177 wear leveling current=97, 194 temp raw=35
+1000
+09 32 00 64 64 10 27 00 00 00 00 00
+0C 32 00 64 64 8C 00 00 00 00 00 00
+B1 13 00 61 61 20 00 00 00 00 00 00
+C2 22 00 4B 4B 23 00 00 00 00 00 00

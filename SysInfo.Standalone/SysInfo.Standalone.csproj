@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Fallback build: same sources as SysInfo.Wpf, but carries its own .NET 8 runtime
+       in one compressed exe - runs even if Windows has no usable .NET Framework. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <OutputType>WinExe</OutputType>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>SysInfo</AssemblyName>
+    <RootNamespace>CNSysInfo</RootNamespace>
+    <LangVersion>12</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Version>2.2.2</Version>
+    <NoWarn>$(NoWarn);CS8632;CA1416;IL2104;IL3000</NoWarn>
+    <ApplicationIcon>..\SysInfo.Wpf\info.ico</ApplicationIcon>
+    <ApplicationManifest>..\SysInfo.Wpf\Properties\app.manifest</ApplicationManifest>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\SysInfo.Wpf\*.cs" />
+    <EmbeddedResource Include="..\SysInfo.Wpf\info.ico">
+      <LogicalName>info.ico</LogicalName>
+    </EmbeddedResource>
+    <PackageReference Include="System.Management" Version="8.0.0" />
+  </ItemGroup>
+</Project>
