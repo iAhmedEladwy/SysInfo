@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.2.3
+
+- Version advance for verifying automatic updates from the 2.2.2 release. No feature changes.
+
 ## 2.2.2
 
 - Compact single-column light WPF interface with content-fitting startup size, centered rating, footer capture details, BIOS badge beside the computer model and a restart reminder.

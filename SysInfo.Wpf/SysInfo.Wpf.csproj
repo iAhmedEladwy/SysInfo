@@ -9,7 +9,7 @@
     <LangVersion>12</LangVersion>
     <Nullable>disable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
-    <Version>2.2.2</Version>
+    <Version>2.2.3</Version>
     <NoWarn>$(NoWarn);CS8632</NoWarn>
     <ApplicationManifest>Properties\app.manifest</ApplicationManifest>
     <AppConfig>app.config</AppConfig>
