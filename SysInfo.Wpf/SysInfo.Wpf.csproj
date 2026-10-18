@@ -9,7 +9,13 @@
     <LangVersion>12</LangVersion>
     <Nullable>disable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
-    <Version>2.2.3</Version>
+    <Version>2.2.4</Version>
+    <Title>SysInfo</Title>
+    <Product>SysInfo</Product>
+    <Company>ELADWYSOFT</Company>
+    <Authors>Ahmed Eladwy</Authors>
+    <Description>Windows system information and hardware health</Description>
+    <Copyright>Copyright (c) 2026 ELADWYSOFT</Copyright>
     <NoWarn>$(NoWarn);CS8632</NoWarn>
     <ApplicationManifest>Properties\app.manifest</ApplicationManifest>
     <AppConfig>app.config</AppConfig>
@@ -37,6 +43,11 @@
     <!-- Embedded under the plain name so pack://application:,,,/info.ico resolves (same as the WPF Resource item). -->
     <EmbeddedResource Include="info.ico">
       <LogicalName>info.ico</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\eladwysoft-logo.png">
+      <LogicalName>branding-logo.png</LogicalName>
     </EmbeddedResource>
   </ItemGroup>
 </Project>

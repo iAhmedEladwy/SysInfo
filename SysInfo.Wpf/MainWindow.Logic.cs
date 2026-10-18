@@ -30,7 +30,7 @@ namespace CNSysInfo
 
         private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            lblVersion.Text = "ELADWYSOFT SysInfo " + AppVersion;
+            lblVersion.Text = "SysInfo " + AppVersion + " · About";
             await LoadAsync();
             await CheckForUpdates(true);
         }
@@ -141,6 +141,22 @@ namespace CNSysInfo
             var mu = _ui.MemoryUsagePercentage;
             Bar(pbMem, lblMem, mu, mu.HasValue ? Presentation.ForUsage(mu.Value) : Presentation.Unknown,
                 mu.HasValue ? mu.Value + "%" : "Unknown");
+
+            var memoryPressure = UiStatusLogic.MemoryPressure(mu);
+            SetResourceWarning(memoryWarningBadge, memoryPressure,
+                memoryPressure == ResourcePressure.Critical ? "RAM critical" : "High RAM",
+                "Memory in use: " + mu + "%. High memory use can slow apps and make browsing feel sluggish. " +
+                "Save your work, close unused apps or browser tabs, and check Task Manager > Processes > Memory. " +
+                "Use Refresh to check again.");
+            var systemUsage = _ui.SystemDriveUsage ?? new DiskUsageInfo();
+            var drivePressure = UiStatusLogic.SystemDrivePressure(systemUsage);
+            string driveName = (_ui.SystemDriveRoot ?? string.Empty).TrimEnd('\\', '/');
+            SetResourceWarning(systemDriveWarningBadge, drivePressure,
+                driveName + (drivePressure == ResourcePressure.Critical ? " critical" : " low space"),
+                driveName + " has " + Presentation.FormatBytes(systemUsage.FreeBytes) + " free of " + Presentation.FormatBytes(systemUsage.TotalBytes) + ". " +
+                "Low Windows drive space can slow apps and interrupt updates or saving files. " +
+                "Open Settings > System > Storage to review temporary files or move unneeded files. " +
+                "Review files before deleting them. Use Refresh to check again.");
 
             var sb = new StringBuilder(Presentation.StorageText(s.Disks));
             var du = _ui.DiskUsage;

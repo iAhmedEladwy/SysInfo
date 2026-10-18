@@ -6,9 +6,9 @@ namespace CNSysInfo.Tests
     [TestClass]
     public class UpdateTests
     {
-        private static GitHubRelease Release(string version = "2.2.3", bool standalone = false)
+        private static GitHubRelease Release(string version = "2.2.3")
         {
-            var name = UpdateLogic.PackageName(version, standalone);
+            var name = UpdateLogic.PackageName(version);
             return new GitHubRelease { Tag = "v" + version, Assets = new[] { new GitHubAsset { Name = name, Size = 1234,
                 Url = "https://github.com/" + UpdateLogic.Repository + "/releases/download/v" + version + "/" + name,
                 Digest = "sha256:" + new string('a', 64) } } };
@@ -17,38 +17,47 @@ namespace CNSysInfo.Tests
         [TestMethod]
         public void StableNewerMatchingPackageIsOffered()
         {
-            var update = UpdateLogic.Find(Release(), new Version(2, 2, 2, 0), "", false);
+            var update = UpdateLogic.Find(Release(), new Version(2, 2, 2, 0), "");
             Assert.IsNotNull(update);
             Assert.AreEqual("2.2.3", update.VersionText);
             Assert.AreEqual("SysInfo-WPF-v2.2.3.zip", update.PackageName);
-            Assert.IsNull(UpdateLogic.Find(Release(), new Version(2, 2, 2), "", true));
-            Assert.IsNotNull(UpdateLogic.Find(Release(standalone: true), new Version(2, 2, 2), "", true));
+        }
+
+        [TestMethod]
+        public void RetiredStandaloneArtifactIsNotOffered()
+        {
+            var release = Release();
+            var asset = release.Assets[0];
+            string retiredName = "SysInfo-Standalone-win-x64-v2.2.3.zip";
+            asset.Url = asset.Url.Replace(asset.Name, retiredName);
+            asset.Name = retiredName;
+            Assert.IsNull(UpdateLogic.Find(release, new Version(2, 2, 2), ""));
         }
 
         [TestMethod]
         public void CurrentOlderSkippedAndPrereleaseVersionsStaySilent()
         {
-            Assert.IsNull(UpdateLogic.Find(Release(), new Version(2, 2, 3), "", false));
-            Assert.IsNull(UpdateLogic.Find(Release(), new Version(2, 2, 4), "", false));
-            Assert.IsNull(UpdateLogic.Find(Release(), new Version(2, 2, 2), "v2.2.3", false));
+            Assert.IsNull(UpdateLogic.Find(Release(), new Version(2, 2, 3), ""));
+            Assert.IsNull(UpdateLogic.Find(Release(), new Version(2, 2, 4), ""));
+            Assert.IsNull(UpdateLogic.Find(Release(), new Version(2, 2, 2), "v2.2.3"));
             var release = Release(); release.Prerelease = true;
-            Assert.IsNull(UpdateLogic.Find(release, new Version(2, 2, 2), "", false));
+            Assert.IsNull(UpdateLogic.Find(release, new Version(2, 2, 2), ""));
             release.Prerelease = false; release.Draft = true;
-            Assert.IsNull(UpdateLogic.Find(release, new Version(2, 2, 2), "", false));
+            Assert.IsNull(UpdateLogic.Find(release, new Version(2, 2, 2), ""));
             release.Draft = false; release.Tag = "v2.2.3-beta";
-            Assert.IsNull(UpdateLogic.Find(release, new Version(2, 2, 2), "", false));
+            Assert.IsNull(UpdateLogic.Find(release, new Version(2, 2, 2), ""));
         }
 
         [TestMethod]
         public void InvalidMissingOrWrongSourceArtifactsAreRejected()
         {
             var release = Release(); release.Assets[0].Digest = null;
-            Assert.IsNull(UpdateLogic.Find(release, new Version(2, 2, 2), "", false));
+            Assert.IsNull(UpdateLogic.Find(release, new Version(2, 2, 2), ""));
             release = Release(); release.Assets[0].Url = release.Assets[0].Url.Replace("github.com", "github.com.evil.invalid");
-            Assert.IsNull(UpdateLogic.Find(release, new Version(2, 2, 2), "", false));
+            Assert.IsNull(UpdateLogic.Find(release, new Version(2, 2, 2), ""));
             release = Release(); release.Assets[0].Size = UpdateLogic.MaximumPackageBytes + 1;
-            Assert.IsNull(UpdateLogic.Find(release, new Version(2, 2, 2), "", false));
-            Assert.IsNull(UpdateLogic.Find(null, new Version(2, 2, 2), "", false));
+            Assert.IsNull(UpdateLogic.Find(release, new Version(2, 2, 2), ""));
+            Assert.IsNull(UpdateLogic.Find(null, new Version(2, 2, 2), ""));
             Assert.IsNull(UpdateLogic.ParseVersion("v2.2"));
         }
 

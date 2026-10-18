@@ -11,18 +11,6 @@ namespace CNSysInfo
 {
     internal sealed class UpdateClient
     {
-        public static bool IsStandalone
-        {
-            get
-            {
-#if NETFRAMEWORK
-                return false;
-#else
-                return true;
-#endif
-            }
-        }
-
         private static HttpClient Client(TimeSpan timeout)
         {
             ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
@@ -47,7 +35,7 @@ namespace CNSysInfo
                     await CopyBounded(source, buffer, 1024 * 1024, timeout.Token).ConfigureAwait(false);
                     buffer.Position = 0;
                     var release = (GitHubRelease)new DataContractJsonSerializer(typeof(GitHubRelease)).ReadObject(buffer);
-                    return UpdateLogic.Find(release, current, skipped, IsStandalone);
+                    return UpdateLogic.Find(release, current, skipped);
                 }
             }
         }

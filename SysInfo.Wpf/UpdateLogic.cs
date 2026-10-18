@@ -36,8 +36,8 @@ namespace CNSysInfo
     {
         public const string Repository = "iAhmedEladwy/SysInfo";
         public const long MaximumPackageBytes = 200L * 1024 * 1024;
-        public static string PackageName(string version, bool standalone) =>
-            standalone ? "SysInfo-Standalone-win-x64-v" + version + ".zip" : "SysInfo-WPF-v" + version + ".zip";
+        public static string PackageName(string version) =>
+            "SysInfo-WPF-v" + version + ".zip";
 
         public static Version ParseVersion(string text)
         {
@@ -58,13 +58,13 @@ namespace CNSysInfo
         public static bool ValidHash(string hash) => hash != null && hash.Length == 64 &&
             hash.All(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'));
 
-        public static AppUpdate Find(GitHubRelease release, Version current, string skipped, bool standalone)
+        public static AppUpdate Find(GitHubRelease release, Version current, string skipped)
         {
             var version = ParseVersion(release?.Tag);
             if (release == null || release.Draft || release.Prerelease || version == null || current == null ||
                 version <= ParseVersion(current.ToString()) || version == ParseVersion(skipped)) return null;
             string versionText = version.ToString(3);
-            string name = PackageName(versionText, standalone);
+            string name = PackageName(versionText);
             var asset = release.Assets?.SingleOrDefault(a => a.Name == name);
             if (asset == null || asset.Size <= 0 || asset.Size > MaximumPackageBytes || !ValidDownloadUrl(asset.Url, release.Tag, name)) return null;
             string hash = asset.Digest?.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase) == true ? asset.Digest.Substring(7) : null;

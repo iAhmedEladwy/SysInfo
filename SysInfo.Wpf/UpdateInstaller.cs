@@ -5,6 +5,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Runtime.Serialization;
+using System.Runtime.InteropServices;
 using System.Runtime.Serialization.Json;
 
 namespace CNSysInfo
@@ -22,11 +23,20 @@ namespace CNSysInfo
 
     internal static class UpdateInstaller
     {
+        [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+        private static extern void SHChangeNotify(uint eventId, uint flags, string path, IntPtr unused);
+
+        private static void RefreshExplorerIcon(string path)
+        {
+            try { SHChangeNotify(0x00002000, 0x0005, path, IntPtr.Zero); }
+            catch (Exception ex) { Debug.WriteLine("Explorer icon refresh failed: " + ex.GetType().Name); }
+        }
+
         public static string CacheRoot => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ELADWYSOFT", "SysInfo", "Updates");
 
         public static string ExecutablePath => Process.GetCurrentProcess().MainModule.FileName;
 
-        public static string StagePackage(string package, string jobDirectory, string expectedVersion, bool standalone)
+        public static string StagePackage(string package, string jobDirectory, string expectedVersion)
         {
             string stage = Path.Combine(jobDirectory, "stage");
             Directory.CreateDirectory(stage);
@@ -41,7 +51,7 @@ namespace CNSysInfo
                         throw new InvalidDataException("The update package contains unexpected files.");
                     entry.ExtractToFile(Path.Combine(stage, entry.FullName));
                 }
-                if (!seen.Contains("SysInfo.exe") || (!standalone && !seen.Contains("SysInfo.exe.config")))
+                if (!seen.Contains("SysInfo.exe") || !seen.Contains("SysInfo.exe.config"))
                     throw new InvalidDataException("The update package is missing required files.");
             }
             var version = UpdateLogic.ParseVersion(FileVersionInfo.GetVersionInfo(Path.Combine(stage, "SysInfo.exe")).FileVersion);
@@ -141,6 +151,7 @@ namespace CNSysInfo
                     }
                     finally { if (File.Exists(temporary)) File.Delete(temporary); }
                 }
+                RefreshExplorerIcon(Path.Combine(job.TargetDirectory, "SysInfo.exe"));
                 launch(Path.Combine(job.TargetDirectory, "SysInfo.exe"));
             }
             catch
@@ -150,6 +161,7 @@ namespace CNSysInfo
                     string old = Path.Combine(backup, name), target = Path.Combine(job.TargetDirectory, name);
                     if (File.Exists(old)) File.Copy(old, target, true); else if (File.Exists(target)) File.Delete(target);
                 }
+                RefreshExplorerIcon(Path.Combine(job.TargetDirectory, "SysInfo.exe"));
                 throw;
             }
         }

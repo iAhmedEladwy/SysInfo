@@ -75,6 +75,7 @@ namespace CNSysInfo
         private Grid ratingLayout;
         private Border ratingBadge;
         private Border restartBadge;
+        private Border memoryWarningBadge, systemDriveWarningBadge;
         private TextBlock txtPc, txtUser, txtMaker, txtModel, txtSerial, txtAsset;
         private TextBlock txtOs, txtAct, txtUptime, txtBios;
         private TextBlock txtBattery, txtCpu, txtCpuCache, txtMem, txtStorage, txtGpu, txtScreen;
@@ -96,7 +97,7 @@ namespace CNSysInfo
             return line;
         }
 
-        private static Grid MeterRow(ProgressBar bar, TextBlock caption)
+        private static Grid MeterRow(ProgressBar bar, TextBlock caption, Border warning = null)
         {
             var row = new Grid { Margin = new Thickness(0, 2, 0, 2) };
             row.ColumnDefinitions.Add(new ColumnDefinition());
@@ -108,6 +109,13 @@ namespace CNSysInfo
             Grid.SetColumn(caption, 1);
             row.Children.Add(bar);
             row.Children.Add(caption);
+            if (warning != null)
+            {
+                row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                warning.Margin = new Thickness(8, 0, 0, 0);
+                Grid.SetColumn(warning, 2);
+                row.Children.Add(warning);
+            }
             return row;
         }
 
@@ -135,6 +143,26 @@ namespace CNSysInfo
                 Child = child,
                 VerticalAlignment = VerticalAlignment.Center
             };
+        }
+
+        private static Border ResourceWarningBadge()
+        {
+            var badge = Badge(new TextBlock { FontSize = 10, FontWeight = FontWeights.SemiBold });
+            badge.Padding = new Thickness(5, 0, 5, 0);
+            badge.Visibility = Visibility.Collapsed;
+            return badge;
+        }
+
+        private static void SetResourceWarning(Border badge, ResourcePressure pressure, string label, string explanation)
+        {
+            badge.Visibility = pressure == ResourcePressure.None ? Visibility.Collapsed : Visibility.Visible;
+            var text = (TextBlock)badge.Child;
+            text.Text = label;
+            text.Foreground = Freeze(pressure == ResourcePressure.Critical ? "#991B1B" : "#92400E");
+            badge.Background = Freeze(pressure == ResourcePressure.Critical ? "#FEE2E2" : "#FEF3C7");
+            badge.ToolTip = new ToolTip { Content = new TextBlock { Text = explanation, MaxWidth = 340, TextWrapping = TextWrapping.Wrap } };
+            System.Windows.Automation.AutomationProperties.SetName(badge, label);
+            System.Windows.Automation.AutomationProperties.SetHelpText(badge, explanation);
         }
 
         private static Grid SectionHeading(string title, UIElement badge)
@@ -298,11 +326,7 @@ namespace CNSysInfo
                 using (var s = Assembly.GetExecutingAssembly().GetManifestResourceStream("info.ico"))
                 {
                     if (s == null) return;
-                    var bmp = new BitmapImage();
-                    bmp.BeginInit();
-                    bmp.CacheOption = BitmapCacheOption.OnLoad;
-                    bmp.StreamSource = s;
-                    bmp.EndInit();
+                    var bmp = BitmapFrame.Create(s, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
                     bmp.Freeze();
                     Icon = bmp;
                 }
@@ -312,7 +336,7 @@ namespace CNSysInfo
 
         private void BuildUi()
         {
-            Title = "ELADWYSOFT SysInfo";
+            Title = "SysInfo";
             var work = SystemParameters.WorkArea;
             Width = Math.Min(800, work.Width);
             Height = Math.Min(720, work.Height);
@@ -364,10 +388,16 @@ namespace CNSysInfo
             btnStatusDetails.Click += ShowCollectionDetails;
             System.Windows.Automation.AutomationProperties.SetName(btnStatusDetails, "Collection details");
             Grid.SetColumn(btnStatusDetails, 1);
-            Grid.SetColumn(lblVersion, 2);
+            var about = new Button { Content = lblVersion, Background = Brushes.White, Foreground = MutedBrush,
+                BorderThickness = new Thickness(0), Padding = new Thickness(0), Cursor = Cursors.Hand,
+                VerticalAlignment = VerticalAlignment.Center, ToolTip = "About SysInfo",
+                Template = TryParseTemplate("<ControlTemplate xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' TargetType='Button'><ContentPresenter VerticalAlignment='Center'/></ControlTemplate>") };
+            System.Windows.Automation.AutomationProperties.SetName(about, "About SysInfo");
+            about.Click += (_, __) => new AboutWindow { Owner = this, Icon = Icon }.ShowDialog();
+            Grid.SetColumn(about, 2);
             statusDock.Children.Add(txtTimeZone);
             statusDock.Children.Add(btnStatusDetails);
-            statusDock.Children.Add(lblVersion);
+            statusDock.Children.Add(about);
             statusBorder.Child = statusDock;
             root.Children.Add(statusBorder);
 
@@ -456,11 +486,14 @@ namespace CNSysInfo
             biosBadge.MaxWidth = 240;
             biosBadge.HorizontalAlignment = HorizontalAlignment.Left;
             biosBadge.Margin = new Thickness(8, 0, 0, 0);
-            var restartText = new TextBlock { Text = "Consider restarting", FontSize = 10, Foreground = InkBrush };
+            var restartText = new TextBlock { Text = "Consider restarting", FontSize = 10, FontWeight = FontWeights.SemiBold, Foreground = Freeze("#92400E") };
             restartBadge = Badge(restartText);
+            restartBadge.Background = Freeze("#FEF3C7");
+            restartBadge.BorderBrush = Freeze("#FBBF24");
+            restartBadge.BorderThickness = new Thickness(1);
             restartBadge.Margin = new Thickness(8, 0, 0, 0);
             restartBadge.Visibility = Visibility.Collapsed;
-            restartBadge.ToolTip = "Reminder after 48 hours of Windows uptime. Restart when convenient if you notice slowdowns. " +
+            restartBadge.ToolTip = "Windows has been running for at least 48 hours. Restart when convenient to refresh Windows and running applications. " +
                 "Save your work first. Fast Startup can preserve uptime across shutdowns.";
             System.Windows.Automation.AutomationProperties.SetName(restartBadge, "Consider restarting: Windows uptime is at least 48 hours");
             var uptimeLine = new WrapPanel();
@@ -480,6 +513,8 @@ namespace CNSysInfo
             txtGpu = RowValue("txtGpu");
             txtScreen = RowValue("txtScreen");
 
+            memoryWarningBadge = ResourceWarningBadge();
+            systemDriveWarningBadge = ResourceWarningBadge();
             var sheet = CardOf(
                 SheetSection("COMPUTER",
                     Row("PC / user", ValueLine(txtPc, txtUser)),
@@ -490,9 +525,9 @@ namespace CNSysInfo
                     Row("Uptime", uptimeLine)),
                 SheetSection("PROCESSOR & MEMORY",
                     Row("Processor", txtCpu), Row("CPU cache", txtCpuCache), Row("Memory", txtMem),
-                    Row("Memory in use", MeterRow(pbMem, lblMem))),
+                    Row("Memory in use", MeterRow(pbMem, lblMem, memoryWarningBadge))),
                 SheetSection("STORAGE",
-                    Row("Drive / health", txtStorage), Row("Space used", MeterRow(pbDisk, lblDisk))),
+                    Row("Drive / health", txtStorage), Row("Space used", MeterRow(pbDisk, lblDisk, systemDriveWarningBadge))),
                 SheetSection("BATTERY",
                     Row("Power / capacity", txtBattery), Row("Battery health", MeterRow(pbBattery, lblBattery))),
                 SheetSection("GRAPHICS & DISPLAYS",

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 
 namespace CNSysInfo
 {
@@ -9,6 +10,8 @@ namespace CNSysInfo
         /// <summary>RAM load 0-100 from the system snapshot (GlobalMemoryStatusEx), null when unreadable.</summary>
         public int? MemoryUsagePercentage { get { return System.MemoryLoadPercent; } }
         public DiskUsageInfo DiskUsage { get; set; } = new DiskUsageInfo();
+        public string SystemDriveRoot { get; set; } = string.Empty;
+        public DiskUsageInfo SystemDriveUsage { get; set; } = new DiskUsageInfo();
         public StorageHealthInfo StorageHealth { get; set; } = new StorageHealthInfo();
         public IReadOnlyList<string> Warnings { get; set; } = Array.Empty<string>();
     }
@@ -23,6 +26,13 @@ namespace CNSysInfo
         {
             var result = new UiSnapshot { System = SystemInfoService.Collect() };
             using var collection = new CollectionSession(12000);
+            result.SystemDriveRoot = Path.GetPathRoot(Environment.SystemDirectory);
+            result.SystemDriveUsage = collection.Read(() =>
+            {
+                var drive = new DriveInfo(result.SystemDriveRoot);
+                if (!drive.IsReady) throw new IOException("Windows system volume is not ready.");
+                return DiskUsageInfo.FromTotals((ulong)drive.TotalSize, (ulong)drive.AvailableFreeSpace);
+            }, "System drive free space", new DiskUsageInfo(), 1000);
             result.DiskUsage = collection.Read(() => StorageHealthService.CalculateDiskUsage("0"),
                 "Disk0 usage", new DiskUsageInfo(), 4000);
             result.StorageHealth = collection.Read(() => StorageHealthService.GetStorageHealth("0"),

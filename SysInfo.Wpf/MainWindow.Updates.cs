@@ -19,12 +19,18 @@ namespace CNSysInfo
             if (_checkingUpdates) return;
             _checkingUpdates = true;
             bool installing = false;
+            const string checking = "Checking for updates...";
+            string previousStatus = lblStatus.Text;
+            string previousDetails = _collectionDetails;
+            bool previousActionable = btnStatusDetails.IsEnabled;
             try
             {
                 var preferences = UpdatePreferences.Load();
                 if (startup && !preferences.CheckOnStartup) return;
+                SetCollectionState(checking, "Checking GitHub for a newer SysInfo release.", false);
                 var update = await new UpdateClient().CheckAsync(typeof(App).Assembly.GetName().Version,
                     startup ? preferences.SkippedVersion : string.Empty);
+                if (lblStatus.Text == checking) SetCollectionState(previousStatus, previousDetails, previousActionable);
                 if (update == null || !IsVisible) return;
                 var offer = new UpdateOfferWindow(update, preferences) { Owner = this };
                 if (offer.ShowDialog() != true) return;
@@ -33,7 +39,7 @@ namespace CNSysInfo
                 SetCollectionState("Downloading update...", "Downloading and verifying the selected GitHub release.", false);
                 string directory = Path.Combine(UpdateInstaller.CacheRoot, Guid.NewGuid().ToString("N"));
                 var package = await new UpdateClient().DownloadAsync(update, directory);
-                string stage = await Task.Run(() => UpdateInstaller.StagePackage(package, directory, update.VersionText, UpdateClient.IsStandalone));
+                string stage = await Task.Run(() => UpdateInstaller.StagePackage(package, directory, update.VersionText));
                 UpdateInstaller.LaunchHelper(stage, update.VersionText);
                 Application.Current.Shutdown();
             }
@@ -49,7 +55,12 @@ namespace CNSysInfo
                         "SysInfo update", MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
             }
-            finally { _checkingUpdates = false; if (installing && IsVisible) SetBusy(false); }
+            finally
+            {
+                _checkingUpdates = false;
+                if (lblStatus.Text == checking) SetCollectionState(previousStatus, previousDetails, previousActionable);
+                if (installing && IsVisible) SetBusy(false);
+            }
         }
 
         private void UpdateSettings_Click(object sender, RoutedEventArgs e)

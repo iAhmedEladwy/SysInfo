@@ -17,6 +17,38 @@ namespace CNSysInfo.Tests
         }
 
         [TestMethod]
+        public void MemoryPressure_UsesKnownReadingsAndExactBoundaries()
+        {
+            Assert.AreEqual(ResourcePressure.None, UiStatusLogic.MemoryPressure(null));
+            Assert.AreEqual(ResourcePressure.None, UiStatusLogic.MemoryPressure(-1));
+            Assert.AreEqual(ResourcePressure.None, UiStatusLogic.MemoryPressure(101));
+            Assert.AreEqual(ResourcePressure.None, UiStatusLogic.MemoryPressure(79));
+            Assert.AreEqual(ResourcePressure.Warning, UiStatusLogic.MemoryPressure(80));
+            Assert.AreEqual(ResourcePressure.Warning, UiStatusLogic.MemoryPressure(94));
+            Assert.AreEqual(ResourcePressure.Critical, UiStatusLogic.MemoryPressure(95));
+            Assert.AreEqual(ResourcePressure.Critical, UiStatusLogic.MemoryPressure(100));
+        }
+
+        [TestMethod]
+        public void SystemDrivePressure_UsesFreeSpaceWithoutConfusingDiskHealthOrCapacity()
+        {
+            const ulong gib = 1024UL * 1024 * 1024;
+            Assert.AreEqual(ResourcePressure.None, UiStatusLogic.SystemDrivePressure(null));
+            Assert.AreEqual(ResourcePressure.None, UiStatusLogic.SystemDrivePressure(new DiskUsageInfo()));
+            Assert.AreEqual(ResourcePressure.None, UiStatusLogic.SystemDrivePressure(new DiskUsageInfo { HasData = true, TotalBytes = 1, FreeBytes = 2 }));
+            Assert.AreEqual(ResourcePressure.None, UiStatusLogic.SystemDrivePressure(DiskUsageInfo.FromTotals(0, 0)));
+            Assert.AreEqual(ResourcePressure.None, UiStatusLogic.SystemDrivePressure(DiskUsageInfo.FromTotals(100*gib, 11*gib)));
+            Assert.AreEqual(ResourcePressure.Warning, UiStatusLogic.SystemDrivePressure(DiskUsageInfo.FromTotals(50*gib, 10*gib)));
+            Assert.AreEqual(ResourcePressure.Warning, UiStatusLogic.SystemDrivePressure(DiskUsageInfo.FromTotals(200*gib, 20*gib)));
+            Assert.AreEqual(ResourcePressure.None, UiStatusLogic.SystemDrivePressure(DiskUsageInfo.FromTotals(500*gib, 30*gib)));
+            Assert.AreEqual(ResourcePressure.None, UiStatusLogic.SystemDrivePressure(DiskUsageInfo.FromTotals(2000*gib, 100*gib)));
+            Assert.AreEqual(ResourcePressure.Warning, UiStatusLogic.SystemDrivePressure(DiskUsageInfo.FromTotals(200*gib, 6*gib)));
+            Assert.AreEqual(ResourcePressure.Critical, UiStatusLogic.SystemDrivePressure(DiskUsageInfo.FromTotals(100*gib, 5*gib)));
+            Assert.AreEqual(ResourcePressure.Critical, UiStatusLogic.SystemDrivePressure(DiskUsageInfo.FromTotals(50*gib, 2*gib)));
+            Assert.AreEqual(ResourcePressure.Critical, UiStatusLogic.SystemDrivePressure(DiskUsageInfo.FromTotals(100*gib, 0)));
+        }
+
+        [TestMethod]
         public void CaptureMetadata_UsesSnapshotTimeAndHonestUnknownZone()
         {
             var captured = new DateTime(2026, 10, 17, 12, 34, 56);
