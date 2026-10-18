@@ -4,11 +4,11 @@ A compact Windows system-information tool with a light WPF interface, hardware d
 
 ## Download
 
-Get a ZIP from [GitHub Releases](https://github.com/iAhmedEladwy/SysInfo/releases).
+Get the EXE from [GitHub Releases](https://github.com/iAhmedEladwy/SysInfo/releases).
 
-**SysInfo-WPF** is the portable Windows build. It uses .NET Framework 4.7 or later, included in Windows 10 version 1703 and newer and Windows 11.
+**SysInfo** is the portable Windows build. It uses .NET Framework 4.7 or later, included in Windows 10 version 1703 and newer and Windows 11.
 
-Extract all files to a writable folder and run `SysInfo.exe`. Automatic updates preserve your executable filename, including renamed copies, and install its matching `.exe.config` file.
+Download the release EXE to a writable folder and run it. No configuration file is required. Update preferences are stored in HKCU\Software\ELADWYSOFT\SysInfo\Updates. Automatic updates download the EXE directly, verify its GitHub SHA-256 digest and embedded version, and preserve your executable filename, including renamed copies. Versions 2.2.6 and earlier require one manual download to switch to EXE-only updates.
 
 ## Updates
 
@@ -16,7 +16,7 @@ Startup checks query this repository's latest stable GitHub release without GitH
 
 Preferences are per Windows user under `HKEY_CURRENT_USER\Software\ELADWYSOFT\SysInfo\Updates`: `CheckOnStartup` (DWORD) and `SkippedVersion` (string). Use **Windows tools > Update settings** to enable checks again or clear the skipped release. **Check for updates** checks manually even when automatic checking is disabled.
 
-The updater downloads the WPF package, checks SHA-256 integrity and the embedded version, waits for SysInfo to exit, replaces its files and relaunches. Installation failures roll back changed files. It does not request administrator access; use a writable installation folder. Checksums protect download integrity and are not code-signing certificates.
+The updater downloads the release EXE, checks SHA-256 integrity and the embedded version, waits for SysInfo to exit, replaces its files and relaunches. Installation failures roll back changed files. It does not request administrator access; use a writable installation folder. Checksums protect download integrity and are not code-signing certificates.
 
 Click the version and **About** text in the footer to see the app version, ELADWYSOFT branding, developer contact and GitHub links.
 
@@ -35,7 +35,7 @@ With the .NET 8 SDK:
 ```powershell
 dotnet test SysInfo.Tests -c Release
 dotnet build SysInfo.Wpf -c Release
-./scripts/Package-Release.ps1 -Version 2.2.6
+./scripts/Package-Release.ps1 -Version 2.2.7
 ```
 
 Cross-drive updater regression testing is available in `scripts/Test-UpdaterCrossDrive.ps1`. Run it in Windows PowerShell with `-Executable`, `-Package` and an existing `-TargetRoot` on a different drive from the updater cache. It creates and cleans disposable installation folders.

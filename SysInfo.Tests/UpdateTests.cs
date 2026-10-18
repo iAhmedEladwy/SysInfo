@@ -20,7 +20,7 @@ namespace CNSysInfo.Tests
             var update = UpdateLogic.Find(Release(), new Version(2, 2, 2, 0), "");
             Assert.IsNotNull(update);
             Assert.AreEqual("2.2.3", update.VersionText);
-            Assert.AreEqual("SysInfo-WPF-v2.2.3.zip", update.PackageName);
+            Assert.AreEqual("SysInfo-v2.2.3.exe", update.PackageName);
         }
 
         [TestMethod]

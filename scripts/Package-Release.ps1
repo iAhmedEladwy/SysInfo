@@ -7,14 +7,8 @@ $framework = Join-Path $root 'SysInfo.Wpf/bin/Release/net47'
 $exe = Join-Path $framework 'SysInfo.exe'
 $actual = [Diagnostics.FileVersionInfo]::GetVersionInfo($exe).FileVersion
 if ([Version]$actual -ne [Version]"$Version.0") { throw "Unexpected file version: $actual" }
-$files = @('SysInfo.exe','SysInfo.exe.config') | ForEach-Object {
-    $file = Join-Path $framework $_
-    if (!(Test-Path -LiteralPath $file)) { throw "Missing $file" }
-    $file
-}
 New-Item -ItemType Directory -Path $output -Force | Out-Null
-$zip = Join-Path $output "SysInfo-WPF-v$Version.zip"
-Compress-Archive -LiteralPath $files -DestinationPath $zip -Force
-$hash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
-[IO.File]::WriteAllText($zip+'.sha256', "$hash  $([IO.Path]::GetFileName($zip))`n", [Text.UTF8Encoding]::new($false))
-Write-Output ([IO.Path]::GetFileName($zip) + ': ' + (Get-Item $zip).Length + ' bytes; SHA256 ' + $hash)
+$destination = Join-Path $output "SysInfo-v$Version.exe"
+Copy-Item -LiteralPath $exe -Destination $destination -Force
+$hash = (Get-FileHash -LiteralPath $destination -Algorithm SHA256).Hash.ToLowerInvariant()
+Write-Output ([IO.Path]::GetFileName($destination) + ': ' + (Get-Item $destination).Length + ' bytes; SHA256 ' + $hash)

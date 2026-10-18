@@ -41,20 +41,10 @@ namespace CNSysInfo
         {
             string stage = Path.Combine(jobDirectory, "stage");
             Directory.CreateDirectory(stage);
-            using (var zip = ZipFile.OpenRead(package))
-            {
-                var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                long total = 0;
-                foreach (var entry in zip.Entries)
-                {
-                    if ((entry.FullName != "SysInfo.exe" && entry.FullName != "SysInfo.exe.config") ||
-                        !seen.Add(entry.FullName) || entry.Length <= 0 || (total += entry.Length) > 300L * 1024 * 1024)
-                        throw new InvalidDataException("The update package contains unexpected files.");
-                    entry.ExtractToFile(Path.Combine(stage, entry.FullName));
-                }
-                if (!seen.Contains("SysInfo.exe") || !seen.Contains("SysInfo.exe.config"))
-                    throw new InvalidDataException("The update package is missing required files.");
-            }
+            var download = new FileInfo(package);
+            if (!download.Exists || download.Length <= 0 || download.Length > UpdateLogic.MaximumPackageBytes)
+                throw new InvalidDataException("Invalid update executable.");
+            File.Copy(package, Path.Combine(stage, "SysInfo.exe"));
             var version = UpdateLogic.ParseVersion(FileVersionInfo.GetVersionInfo(Path.Combine(stage, "SysInfo.exe")).FileVersion);
             if (version == null || version != UpdateLogic.ParseVersion(expectedVersion))
                 throw new InvalidDataException("The downloaded app version does not match the release.");

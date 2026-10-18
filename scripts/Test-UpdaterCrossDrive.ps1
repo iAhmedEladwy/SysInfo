@@ -78,7 +78,7 @@ public class $class {
             if(-not $updated){Start-Sleep -Milliseconds 100}
         }
         if(-not $updated){throw 'Cross-drive update did not relaunch'}
-        foreach($name in 'SysInfo.exe','SysInfo.exe.config'){
+        foreach($name in 'SysInfo.exe'){
             $installed=if($name -eq 'SysInfo.exe'){$target}else{$target+'.config'}
             if((Get-FileHash $installed).Hash -ne (Get-FileHash (Join-Path $stage $name)).Hash){throw 'Installed file differs from stage'}
         }
@@ -90,8 +90,8 @@ public class $class {
 
         # Reset the disposable installation to exercise a failed relaunch transaction.
         Copy-Item -LiteralPath (Join-Path $jobRoot ('backup\'+$alias)) -Destination $target -Force
-        if($hadConfig){Copy-Item -LiteralPath (Join-Path $jobRoot ('backup\'+$alias+'.config')) -Destination ($target+'.config') -Force}
-        else{Remove-Item -LiteralPath ($target+'.config') -Force}
+        # EXE-only updates leave an existing runtime config untouched.
+        if(-not $hadConfig -and (Test-Path -LiteralPath ($target+'.config'))){throw 'EXE-only update created a config'}
         $script:launchAttempted=$false
         $fail=[Action[string]]{param($path) $script:launchAttempted=$true;throw 'Expected relaunch failure'}
         $failed=$false

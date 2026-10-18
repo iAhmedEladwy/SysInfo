@@ -38,7 +38,7 @@ namespace CNSysInfo
         public const string Repository = "iAhmedEladwy/SysInfo";
         public const long MaximumPackageBytes = 200L * 1024 * 1024;
         public static string PackageName(string version) =>
-            "SysInfo-WPF-v" + version + ".zip";
+            "SysInfo-v" + version + ".exe";
 
         public static string InstalledExecutableName(string name)
         {
