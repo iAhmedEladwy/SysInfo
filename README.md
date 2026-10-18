@@ -35,7 +35,9 @@ With the .NET 8 SDK:
 ```powershell
 dotnet test SysInfo.Tests -c Release
 dotnet build SysInfo.Wpf -c Release
-./scripts/Package-Release.ps1 -Version 2.2.5
+./scripts/Package-Release.ps1 -Version 2.2.6
 ```
+
+Cross-drive updater regression testing is available in `scripts/Test-UpdaterCrossDrive.ps1`. Run it in Windows PowerShell with `-Executable`, `-Package` and an existing `-TargetRoot` on a different drive from the updater cache. It creates and cleans disposable installation folders.
 
 The main solution contains the WPF app and its tests. The original C# WinForms implementation remains available in Git history at commit `866b9a3`.

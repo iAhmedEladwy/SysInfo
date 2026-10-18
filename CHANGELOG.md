@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.2.6
+
+- Fix updates when the app and updater backup cache are on different drives, including apps installed on D: with a C: user profile.
+- Copy backups separately and perform installation and rollback atomically beside the app.
+
 ## 2.2.5
 
 - Automatic updates preserve renamed executable filenames and their matching config files, including names containing spaces.

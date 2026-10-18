@@ -26,6 +26,7 @@
     <Compile Include="..\SysInfo.Wpf\UiStatusLogic.cs" Link="Linked\UiStatusLogic.cs" />
     <Compile Include="..\SysInfo.Wpf\CollectionSession.cs" Link="Linked\CollectionSession.cs" />
     <Compile Include="..\SysInfo.Wpf\UpdateLogic.cs" Link="Linked\UpdateLogic.cs" />
+    <Compile Include="..\SysInfo.Wpf\UpdateFileOperations.cs" Link="Linked\UpdateFileOperations.cs" />
     <Compile Include="..\SysInfo.Wpf\CpuId.cs" Link="Linked\CpuId.cs" />
     <Compile Include="..\SysInfo.Wpf\CpuSupportEvaluator.cs" Link="Linked\CpuSupportEvaluator.cs" />
     <Compile Include="..\SysInfo.Wpf\WindowsVersionInfo.cs" Link="Linked\WindowsVersionInfo.cs" />

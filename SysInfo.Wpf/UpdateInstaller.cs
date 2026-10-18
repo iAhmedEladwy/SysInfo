@@ -146,8 +146,7 @@ namespace CNSysInfo
                     try
                     {
                         File.Copy(Path.Combine(job.StageDirectory, name), temporary);
-                        if (File.Exists(target)) File.Replace(temporary, target, Path.Combine(backup, installedName));
-                        else File.Move(temporary, target);
+                        UpdateFileOperations.Install(temporary, target, Path.Combine(backup, installedName));
                         applied.Add(installedName);
                     }
                     finally { if (File.Exists(temporary)) File.Delete(temporary); }
@@ -160,7 +159,7 @@ namespace CNSysInfo
                 foreach (var name in applied)
                 {
                     string old = Path.Combine(backup, name), target = Path.Combine(job.TargetDirectory, name);
-                    if (File.Exists(old)) File.Copy(old, target, true); else if (File.Exists(target)) File.Delete(target);
+                    if (File.Exists(old)) UpdateFileOperations.Restore(old, target); else if (File.Exists(target)) File.Delete(target);
                 }
                 RefreshExplorerIcon(Path.Combine(job.TargetDirectory, UpdateLogic.InstalledExecutableName(job.TargetExecutableName)));
                 throw;
