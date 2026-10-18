@@ -62,6 +62,30 @@ namespace CNSysInfo.Tests
         }
 
         [TestMethod]
+        public void InstalledNamesPreserveRenamedExecutablesAndLegacyJobs()
+        {
+            Assert.AreEqual("SysInfo.exe", UpdateLogic.InstalledExecutableName(null));
+            Assert.AreEqual("SysInfo.exe.config", UpdateLogic.InstalledFileName("SysInfo.exe.config", null));
+            Assert.AreEqual("SysInfo - Copy.exe", UpdateLogic.InstalledFileName("SysInfo.exe", "SysInfo - Copy.exe"));
+            Assert.AreEqual("My Tool.EXE.config", UpdateLogic.InstalledFileName("SysInfo.exe.config", "My Tool.EXE"));
+            Assert.AreEqual("System Info \u0627\u0644\u0646\u0638\u0627\u0645.exe", UpdateLogic.InstalledExecutableName("System Info \u0627\u0644\u0646\u0638\u0627\u0645.exe"));
+            Assert.ThrowsException<System.IO.InvalidDataException>(() => UpdateLogic.InstalledFileName("other.dll", "My Tool.exe"));
+        }
+
+        [DataTestMethod]
+        [DataRow("../Other.exe")]
+        [DataRow("folder\\Other.exe")]
+        [DataRow("C:\\Other.exe")]
+        [DataRow("Other.dll")]
+        [DataRow("Other.exe:stream")]
+        [DataRow("Other\n.exe")]
+        [DataRow("Other?.exe")]
+        public void InstalledNamesRejectPathsAndInvalidFileNames(string name)
+        {
+            Assert.ThrowsException<System.IO.InvalidDataException>(() => UpdateLogic.InstalledExecutableName(name));
+        }
+
+        [TestMethod]
         public void CacheUnitsAreKilobytesAndUnavailableIsNotZero()
         {
             Assert.AreEqual("L2: 1.5 MB | L3: 9 MB", Presentation.CpuCacheText(1536, 9216));

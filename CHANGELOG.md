@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.2.5
+
+- Automatic updates preserve renamed executable filenames and their matching config files, including names containing spaces.
+- Keep other executable copies in the same folder unchanged during updates and rollback.
+- Older renamed copies need this release installed manually once, or their original SysInfo.exe filename restored for the update.
+
 ## 2.2.4
 
 - Compact RAM and Windows drive-space warning badges with practical tooltips, without adding rows to the window.

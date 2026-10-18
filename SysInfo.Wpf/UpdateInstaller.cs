@@ -14,6 +14,7 @@ namespace CNSysInfo
     internal sealed class UpdateJob
     {
         [DataMember] public string TargetDirectory;
+        [DataMember] public string TargetExecutableName;
         [DataMember] public string StageDirectory;
         [DataMember] public string ExpectedVersion;
         [DataMember] public int ParentPid;
@@ -64,8 +65,7 @@ namespace CNSysInfo
         {
             string executable = ExecutablePath;
             string target = Path.GetDirectoryName(executable);
-            if (!Path.GetFileName(executable).Equals("SysInfo.exe", StringComparison.OrdinalIgnoreCase))
-                throw new IOException("Keep the application filename as SysInfo.exe to use automatic updates.");
+            string executableName = UpdateLogic.InstalledExecutableName(Path.GetFileName(executable));
             // Check permissions before closing the working app; never request elevation.
             string probe = Path.Combine(target, ".sysinfo-update-" + Guid.NewGuid().ToString("N"));
             File.WriteAllText(probe, string.Empty); File.Delete(probe);
@@ -76,7 +76,7 @@ namespace CNSysInfo
             File.Copy(executable, helper);
             if (File.Exists(executable + ".config")) File.Copy(executable + ".config", helper + ".config");
             var process = Process.GetCurrentProcess();
-            var job = new UpdateJob { TargetDirectory = target, StageDirectory = stage, ExpectedVersion = expectedVersion,
+            var job = new UpdateJob { TargetDirectory = target, TargetExecutableName = executableName, StageDirectory = stage, ExpectedVersion = expectedVersion,
                 ParentPid = process.Id, ParentStarted = process.StartTime.ToUniversalTime().Ticks,
                 Files = Directory.GetFiles(stage).Select(Path.GetFileName).ToArray() };
             string spec = Path.Combine(root, "job.json");
@@ -116,7 +116,7 @@ namespace CNSysInfo
                 throw new InvalidDataException("Invalid update paths or file list.");
             var version = UpdateLogic.ParseVersion(FileVersionInfo.GetVersionInfo(Path.Combine(job.StageDirectory, "SysInfo.exe")).FileVersion);
             if (version == null || version != UpdateLogic.ParseVersion(job.ExpectedVersion)) throw new InvalidDataException("Invalid staged application.");
-            string targetExe = Path.Combine(Path.GetFullPath(job.TargetDirectory), "SysInfo.exe");
+            string targetExe = Path.Combine(Path.GetFullPath(job.TargetDirectory), UpdateLogic.InstalledExecutableName(job.TargetExecutableName));
             try
             {
                 using (var parent = Process.GetProcessById(job.ParentPid))
@@ -140,19 +140,20 @@ namespace CNSysInfo
             {
                 foreach (var name in job.Files)
                 {
-                    string target = Path.Combine(job.TargetDirectory, name);
+                    string installedName = UpdateLogic.InstalledFileName(name, job.TargetExecutableName);
+                    string target = Path.Combine(job.TargetDirectory, installedName);
                     string temporary = target + "." + Guid.NewGuid().ToString("N") + ".new";
                     try
                     {
                         File.Copy(Path.Combine(job.StageDirectory, name), temporary);
-                        if (File.Exists(target)) File.Replace(temporary, target, Path.Combine(backup, name));
+                        if (File.Exists(target)) File.Replace(temporary, target, Path.Combine(backup, installedName));
                         else File.Move(temporary, target);
-                        applied.Add(name);
+                        applied.Add(installedName);
                     }
                     finally { if (File.Exists(temporary)) File.Delete(temporary); }
                 }
-                RefreshExplorerIcon(Path.Combine(job.TargetDirectory, "SysInfo.exe"));
-                launch(Path.Combine(job.TargetDirectory, "SysInfo.exe"));
+                RefreshExplorerIcon(Path.Combine(job.TargetDirectory, UpdateLogic.InstalledExecutableName(job.TargetExecutableName)));
+                launch(Path.Combine(job.TargetDirectory, UpdateLogic.InstalledExecutableName(job.TargetExecutableName)));
             }
             catch
             {
@@ -161,7 +162,7 @@ namespace CNSysInfo
                     string old = Path.Combine(backup, name), target = Path.Combine(job.TargetDirectory, name);
                     if (File.Exists(old)) File.Copy(old, target, true); else if (File.Exists(target)) File.Delete(target);
                 }
-                RefreshExplorerIcon(Path.Combine(job.TargetDirectory, "SysInfo.exe"));
+                RefreshExplorerIcon(Path.Combine(job.TargetDirectory, UpdateLogic.InstalledExecutableName(job.TargetExecutableName)));
                 throw;
             }
         }

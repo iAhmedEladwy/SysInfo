@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.IO;
 using System.Runtime.Serialization;
 
 namespace CNSysInfo
@@ -38,6 +39,23 @@ namespace CNSysInfo
         public const long MaximumPackageBytes = 200L * 1024 * 1024;
         public static string PackageName(string version) =>
             "SysInfo-WPF-v" + version + ".zip";
+
+        public static string InstalledExecutableName(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return "SysInfo.exe"; // Jobs from earlier WPF versions.
+            if (name.Length <= 4 || !name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ||
+                name.IndexOfAny(new[] { '\\', '/', ':', '"', '<', '>', '|', '?', '*' }) >= 0 || name.Any(char.IsControl))
+                throw new InvalidDataException("Invalid installed application filename.");
+            return name;
+        }
+
+        public static string InstalledFileName(string packageFile, string executableName)
+        {
+            string name = InstalledExecutableName(executableName);
+            if (packageFile == "SysInfo.exe") return name;
+            if (packageFile == "SysInfo.exe.config") return name + ".config";
+            throw new InvalidDataException("Unexpected update file.");
+        }
 
         public static Version ParseVersion(string text)
         {

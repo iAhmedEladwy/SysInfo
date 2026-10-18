@@ -8,7 +8,7 @@ Get a ZIP from [GitHub Releases](https://github.com/iAhmedEladwy/SysInfo/release
 
 **SysInfo-WPF** is the portable Windows build. It uses .NET Framework 4.7 or later, included in Windows 10 version 1703 and newer and Windows 11.
 
-Extract all files to a writable folder and run `SysInfo.exe`. Keep the executable's original name for automatic updating.
+Extract all files to a writable folder and run `SysInfo.exe`. Automatic updates preserve your executable filename, including renamed copies, and install its matching `.exe.config` file.
 
 ## Updates
 
@@ -35,7 +35,7 @@ With the .NET 8 SDK:
 ```powershell
 dotnet test SysInfo.Tests -c Release
 dotnet build SysInfo.Wpf -c Release
-./scripts/Package-Release.ps1 -Version 2.2.4
+./scripts/Package-Release.ps1 -Version 2.2.5
 ```
 
 The main solution contains the WPF app and its tests. The original C# WinForms implementation remains available in Git history at commit `866b9a3`.
