@@ -68,7 +68,9 @@ namespace CNSysInfo
             if (_livePower?.BatteryPresent != null && next.BatteryPresent != null && _livePower.BatteryPresent != next.BatteryPresent)
                 _batteryNeedsRefresh = true;
             _livePower = next;
-            txtBattery.Text = _livePower.Text;
+            var battery = _ui?.System.BatteryInfo;
+            string capacity = _batteryNeedsRefresh || _livePower.BatteryPresent == false ? "" : BatteryMapper.CapacityText(battery?.DesignCapacity, battery?.FullChargeCapacity);
+            txtBattery.Text = _livePower.Text + (capacity.Length == 0 ? "" : " · " + capacity);
             txtBattery.ToolTip = "Live Windows charge and power status · checked " + DateTime.Now.ToString("HH:mm:ss") +
                 Environment.NewLine + "Updates every 2 seconds and on power changes. The capture time applies to the hardware snapshot." +
                 Environment.NewLine + BatteryCapacityDetails(_ui?.System.BatteryInfo);

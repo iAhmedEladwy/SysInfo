@@ -17,7 +17,7 @@ $app=New-Object Windows.Application;$app.ShutdownMode=[Windows.ShutdownMode]::On
 $window=New-Model 'MainWindow';$snapshot=New-Model 'UiSnapshot';$s=$snapshot.System
 $s.Cpu='Intel(R) Core(TM) i7-8850H CPU @ 2.60GHz';$s.CpuCoreCount=6;$s.CpuLogicalProcessorCount=12;$s.CapturedAt=[DateTime]::Now
 $s.MachineName='Fixture';$s.SystemModel='Latitude 5491';$s.OsDisplay='Windows 11 Pro 64-bit';$s.MemoryLoadPercent=50
-$b=New-Model 'BatteryInfo';$b.ChargeLevel=72;$b.HealthPercentage=38;$b.Status='Charging';$s.BatteryInfo=$b
+$b=New-Model 'BatteryInfo';$b.ChargeLevel=72;$b.HealthPercentage=38;$b.Status='Charging';$b.DesignCapacity=67997;$b.FullChargeCapacity=25612;$s.BatteryInfo=$b
 $window.GetType().GetField('_ui',$flags).SetValue($window,$snapshot)
 # Disable only expensive snapshot/update-on-load work; keep production power monitoring and window hooks.
 $loaded=$window.GetType().GetMethod('Window_Loaded',$flags)
@@ -44,6 +44,14 @@ try{
     if($dialog -eq $window){continue}
     try{
      $script:checked=$dialog.Title
+     if($dialog.Title -eq 'Keyboard test'){
+      $dialog.UpdateLayout();$compactWidth=$dialog.ActualWidth
+      if($compactWidth -gt 740){throw 'Keyboard window has unnecessary empty width'}
+      $pad=Field $dialog 'numpad';$pad.Visibility='Visible';$dialog.UpdateLayout()
+      if($dialog.ActualWidth -le $compactWidth){throw 'Keyboard did not fit the visible numpad'}
+      $pad.Visibility='Collapsed';$dialog.UpdateLayout()
+      if([Math]::Abs($dialog.ActualWidth-$compactWidth) -gt 1){throw 'Keyboard did not shrink after hiding numpad'}
+     }
      if($dialog.Title -eq 'Camera test' -and (Field $dialog 'preview') -ne $null){throw 'Camera started automatically'}
      if($dialog.Title -eq 'Stereo speaker test' -and (Field $dialog 'player') -ne $null){throw 'Audio started automatically'}
     }catch{$script:dialogFailure=$_}
@@ -62,6 +70,8 @@ try{
  if($b.ChargeLevel -ne 72 -or $b.HealthPercentage -ne 38){throw 'Live updates rewrote the snapshot'}
  $live=Field $window '_livePower'
  if($live.BatteryPresent -eq $true){
+  $powerText=(Field $window 'txtBattery').Text
+  if(!$powerText.Contains('Design 67,997') -or !$powerText.Contains('Full 25,612')){throw 'Battery capacities not visible'}
   $old=$asm.GetType('CNSysInfo.LivePowerState').GetMethod('FromNative').Invoke($null,@($true,[byte]1,[byte]128,[byte]255))
   $window.GetType().GetField('_livePower',$flags).SetValue($window,$old)
   Call $window 'UpdateLivePower' @() | Out-Null

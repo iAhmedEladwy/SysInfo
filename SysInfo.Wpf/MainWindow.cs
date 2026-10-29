@@ -518,6 +518,8 @@ namespace CNSysInfo
             uptimeLine.Children.Add(txtUptime);
             uptimeLine.Children.Add(restartBadge);
             txtBattery = RowValue("txtBattery");
+            txtBattery.TextWrapping = TextWrapping.NoWrap;
+            txtBattery.TextTrimming = TextTrimming.CharacterEllipsis;
             pbBattery = Bar();
             lblBattery = BarCaption();
             txtCpu = RowValue("txtCpu");
@@ -547,7 +549,7 @@ namespace CNSysInfo
                 SheetSection("STORAGE",
                     Row("Drive / health", txtStorage), Row("Space used", MeterRow(pbDisk, lblDisk, systemDriveWarningBadge))),
                 SheetSection("BATTERY",
-                    Row("Charge / power", txtBattery), Row("Battery health", MeterRow(pbBattery, lblBattery))),
+                    Row("Power / capacity", txtBattery), Row("Battery health", MeterRow(pbBattery, lblBattery))),
                 SheetSection("GRAPHICS & DISPLAYS",
                     Row("Graphics", txtGpu), Row("Displays", txtScreen)));
             content.Children.Add(sheet);

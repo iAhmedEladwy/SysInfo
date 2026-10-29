@@ -18,8 +18,10 @@ namespace CNSysInfo
         public KeyboardTestWindow()
         {
             DiagnosticUi.Apply(this);
-            Title = "Keyboard test"; Width = Math.Min(920, SystemParameters.WorkArea.Width); Height = Math.Min(540, SystemParameters.WorkArea.Height);
-            MinWidth = Math.Min(560, SystemParameters.WorkArea.Width); MinHeight = Math.Min(360, SystemParameters.WorkArea.Height);
+            Title = "Keyboard test";
+            SizeToContent = SizeToContent.WidthAndHeight;
+            MaxWidth = SystemParameters.WorkArea.Width; MaxHeight = SystemParameters.WorkArea.Height;
+            ResizeMode = ResizeMode.CanMinimize;
             WindowStartupLocation = WindowStartupLocation.CenterOwner;
             Background = Brushes.White; Foreground = Ink; FontFamily = new FontFamily("Segoe UI"); FontSize = 12;
             var body = new DockPanel { Margin = new Thickness(16) };

@@ -33,6 +33,12 @@ namespace CNSysInfo.Tests
             Assert.IsNull(state.Charge);
             Assert.AreEqual("No battery detected · AC power", state.Text);
         }
+        [TestMethod] public void CapacityIsVisibleAndDoesNotReplaceChargeOrHealth()
+        {
+            Assert.AreEqual("Design 67,997 / Full 25,612 mWh", BatteryMapper.CapacityText(67997, 25612));
+            Assert.AreEqual("Full 25,612 mWh", BatteryMapper.CapacityText(null, 25612));
+            Assert.AreEqual("", BatteryMapper.CapacityText(0, null));
+        }
         [TestMethod] public void UnknownChargeDoesNotBecomeZero()
         {
             Assert.AreEqual("Charge unknown · Charging", LivePowerState.FromNative(true, 1, 8, 255).Text);

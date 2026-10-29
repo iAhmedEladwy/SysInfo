@@ -83,6 +83,14 @@ namespace CNSysInfo
             return percentage + (string.IsNullOrWhiteSpace(status) ? "" : " · " + status);
         }
 
+        public static string CapacityText(int? design, int? full)
+        {
+            var parts = new System.Collections.Generic.List<string>();
+            if (design > 0) parts.Add("Design " + design.Value.ToString("N0"));
+            if (full > 0) parts.Add("Full " + full.Value.ToString("N0"));
+            return parts.Count == 0 ? "" : string.Join(" / ", parts) + " mWh";
+        }
+
         /// <summary>Positive capacity or null. WMI returns 0 or null when the firmware does not report it.</summary>
         public static int? NormalizeCapacity(ulong? raw)
         {
