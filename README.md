@@ -22,7 +22,7 @@ Click the version and **About** text in the footer to see the app version, ELADW
 
 ## Copy individual values
 
-Double-click a displayed hardware value, or right-click it and choose **Copy value**. Keyboard users can focus a value and press **Ctrl+C**. This copies the full current value, including multiline or visually truncated text and live battery/power information. Percentage captions and the rating are also copyable. The existing **Copy info** action still copies the report. These actions only write to the Windows clipboard when requested.
+Click a displayed hardware value once to copy it. A hand cursor and tooltip indicate this action. Keyboard users can focus a value and press **Ctrl+C**, **Enter** or **Space**. The optional right-click menu is also available. This copies the full current value, including multiline or visually truncated text and live battery/power information. Percentage captions and the rating are also copyable. The existing **Copy info** action still copies the report. These actions only write to the Windows clipboard when requested.
 
 ## Interactive checks and live power
 

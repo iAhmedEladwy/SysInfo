@@ -11,10 +11,11 @@ namespace CNSysInfo
         public static TextBlock Attach(TextBlock value)
         {
             value.Focusable = true;
+            value.Cursor = Cursors.Hand;
             KeyboardNavigation.SetIsTabStop(value, true);
             System.Windows.Automation.AutomationProperties.SetHelpText(value,
-                "Double-click or right-click to copy this value. When focused, press Ctrl+C.");
-            value.ToolTip = "Double-click or right-click to copy this value. You can also focus it and press Ctrl+C.";
+                "Click to copy this value. When focused, press Ctrl+C, Enter or Space.");
+            value.ToolTip = "Click to copy this value. You can also focus it and press Ctrl+C, Enter or Space.";
             var menu = new ContextMenu();
             menu.Items.Add(new MenuItem { Header = "Copy value", Command = ApplicationCommands.Copy, CommandTarget = value, InputGestureText = "Ctrl+C" });
             value.ContextMenu = menu;
@@ -22,10 +23,13 @@ namespace CNSysInfo
                 (_, args) => { Copy(value); args.Handled = true; },
                 (_, args) => { args.CanExecute = HasValue(value); args.Handled = true; }));
             value.InputBindings.Add(new KeyBinding(ApplicationCommands.Copy, Key.C, ModifierKeys.Control));
+            value.InputBindings.Add(new KeyBinding(ApplicationCommands.Copy, Key.Return, ModifierKeys.None));
+            value.InputBindings.Add(new KeyBinding(ApplicationCommands.Copy, Key.Space, ModifierKeys.None));
             value.MouseLeftButtonDown += (_, args) =>
             {
                 value.Focus();
-                if (args.ClickCount == 2) { Copy(value); args.Handled = true; }
+                Copy(value);
+                args.Handled = true;
             };
             return value;
         }
