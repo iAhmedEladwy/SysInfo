@@ -14,7 +14,11 @@ namespace CNSysInfo
         [STAThread]
         public static void Main(string[] args)
         {
-            if (UpdateInstaller.TryRun(args)) return;
+            if (args.Length > 0 && args[0] == "--apply-update")
+            {
+                MessageBox.Show("SysInfo now uses manual downloads. Open https://github.com/iAhmedEladwy/SysInfo/releases to download the latest EXE. Close SysInfo before replacing your old copy.", "SysInfo updates");
+                return;
+            }
             // Catch EVERY failure path, not just dispatcher ones: an exception thrown
             // while the window is constructed happens before the message loop exists,
             // so DispatcherUnhandledException never sees it and the app just vanishes.

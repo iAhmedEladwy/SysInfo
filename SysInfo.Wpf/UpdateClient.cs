@@ -3,7 +3,6 @@ using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Runtime.Serialization.Json;
-using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -37,46 +36,6 @@ namespace CNSysInfo
                     var release = (GitHubRelease)new DataContractJsonSerializer(typeof(GitHubRelease)).ReadObject(buffer);
                     return UpdateLogic.Find(release, current, skipped);
                 }
-            }
-        }
-
-        public async Task<string> DownloadAsync(AppUpdate update, string directory)
-        {
-            using (var client = Client(TimeSpan.FromMinutes(5)))
-            using (var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(5)))
-            {
-                string hash = update.Sha256;
-                if (!UpdateLogic.ValidHash(hash))
-                {
-                    using (var response = await client.GetAsync(update.ChecksumUrl, HttpCompletionOption.ResponseHeadersRead, timeout.Token).ConfigureAwait(false))
-                    {
-                        response.EnsureSuccessStatusCode();
-                        using (var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
-                        using (var memory = new MemoryStream())
-                        {
-                            await CopyBounded(stream, memory, 1024, timeout.Token).ConfigureAwait(false);
-                            hash = System.Text.Encoding.UTF8.GetString(memory.ToArray()).Trim().Split(new[] { ' ', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)[0];
-                        }
-                    }
-                }
-                if (!UpdateLogic.ValidHash(hash)) throw new InvalidDataException("The release checksum is invalid.");
-                Directory.CreateDirectory(directory);
-                string package = Path.Combine(directory, update.PackageName);
-                using (var response = await client.GetAsync(update.PackageUrl, HttpCompletionOption.ResponseHeadersRead, timeout.Token).ConfigureAwait(false))
-                {
-                    response.EnsureSuccessStatusCode();
-                    using (var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false))
-                    using (var destination = File.Create(package))
-                        await CopyBounded(stream, destination, update.PackageSize, timeout.Token).ConfigureAwait(false);
-                }
-                if (new FileInfo(package).Length != update.PackageSize) throw new InvalidDataException("The download is incomplete.");
-                using (var sha = SHA256.Create())
-                using (var stream = File.OpenRead(package))
-                {
-                    string actual = BitConverter.ToString(sha.ComputeHash(stream)).Replace("-", string.Empty);
-                    if (!actual.Equals(hash, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("The download checksum does not match the release.");
-                }
-                return package;
             }
         }
 

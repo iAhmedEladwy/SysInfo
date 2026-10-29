@@ -8,15 +8,15 @@ Get the EXE from [GitHub Releases](https://github.com/iAhmedEladwy/SysInfo/relea
 
 **SysInfo** is the portable Windows build. It uses .NET Framework 4.7 or later, included in Windows 10 version 1703 and newer and Windows 11.
 
-Download the release EXE to a writable folder and run it. No configuration file is required. Update preferences are stored in HKCU\Software\ELADWYSOFT\SysInfo\Updates. Automatic updates download the EXE directly, verify its GitHub SHA-256 digest and embedded version, and preserve your executable filename, including renamed copies. Versions 2.2.6 and earlier require one manual download to switch to EXE-only updates.
+Download the release EXE to a writable folder and run it. No configuration file is required. Update preferences are stored in HKCU\Software\ELADWYSOFT\SysInfo\Updates. When a newer version is available, SysInfo opens its official GitHub release page so you can download the EXE manually. Close the running app before replacing your old EXE. Keep its old filename if you renamed it; registry preferences are retained.
 
 ## Updates
 
-Startup checks query this repository's latest stable GitHub release without GitHub credentials. The footer shows a temporary checking status, then restores its previous message. No dialog is shown when no update is available or the network check fails. A newer release offers **Update now**, **Skip this release**, and **Don't check for updates automatically**.
+Startup checks query this repository's latest stable GitHub release without GitHub credentials. The footer shows a temporary checking status, then restores its previous message. No dialog is shown when no update is available or the network check fails. A newer release offers **Open GitHub release**, **Skip this release**, and **Don't check for updates automatically**.
 
-Preferences are per Windows user under `HKEY_CURRENT_USER\Software\ELADWYSOFT\SysInfo\Updates`: `CheckOnStartup` (DWORD) and `SkippedVersion` (string). Use **Windows tools > Update settings** to enable checks again or clear the skipped release. **Check for updates** checks manually even when automatic checking is disabled.
+Preferences are per Windows user under `HKEY_CURRENT_USER\Software\ELADWYSOFT\SysInfo\Updates`: `CheckOnStartup` (DWORD) and `SkippedVersion` (string). Use **Tools > Update settings** to enable checks again or clear the skipped release. **Check for updates** checks manually even when automatic checking is disabled.
 
-The updater downloads the release EXE, checks SHA-256 integrity and the embedded version, waits for SysInfo to exit, replaces its files and relaunches. Installation failures roll back changed files. It does not request administrator access; use a writable installation folder. Checksums protect download integrity and are not code-signing certificates.
+The update checker only reads release metadata and opens a release URL built for this repository. It does not download, execute, install or replace application files, start an updater helper, or request administrator rights. Downloading manually is not a guarantee against malware; normal Windows download and execution protections still apply.
 
 Click the version and **About** text in the footer to see the app version, ELADWYSOFT branding, developer contact and GitHub links.
 
@@ -44,11 +44,10 @@ With the .NET 8 SDK:
 ```powershell
 dotnet test SysInfo.Tests -c Release
 dotnet build SysInfo.Wpf -c Release
-./scripts/Package-Release.ps1 -Version 2.2.8
+./scripts/Package-Release.ps1 -Version 2.2.9
 ```
 
 Windows UI/power lifecycle checks are available in `scripts/Test-Diagnostics.ps1` (run with `powershell.exe -STA -File scripts/Test-Diagnostics.ps1 -Executable <built EXE>`). They exercise the actual menu/dialog paths, ensure camera/audio do not start automatically, verify stable main-window sizing, and check power-monitor shutdown. They do not replace physical keyboard/audio/camera/charger acceptance.
 
-Cross-drive updater regression testing is available in `scripts/Test-UpdaterCrossDrive.ps1`. Run it in Windows PowerShell with `-Executable`, `-Package` and an existing `-TargetRoot` on a different drive from the updater cache. It creates and cleans disposable installation folders.
 
 The main solution contains the WPF app and its tests. The original C# WinForms implementation remains available in Git history at commit `866b9a3`.

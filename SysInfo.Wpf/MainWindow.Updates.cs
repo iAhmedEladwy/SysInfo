@@ -1,6 +1,5 @@
 using System;
 using System.Diagnostics;
-using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -18,7 +17,6 @@ namespace CNSysInfo
         {
             if (_checkingUpdates) return;
             _checkingUpdates = true;
-            bool installing = false;
             const string checking = "Checking for updates...";
             string previousStatus = lblStatus.Text;
             string previousDetails = _collectionDetails;
@@ -34,32 +32,27 @@ namespace CNSysInfo
                 if (update == null || !IsVisible) return;
                 var offer = new UpdateOfferWindow(update, preferences) { Owner = this };
                 if (offer.ShowDialog() != true) return;
-                installing = true;
-                SetBusy(true);
-                SetCollectionState("Downloading update...", "Downloading and verifying the selected GitHub release.", false);
-                string directory = Path.Combine(UpdateInstaller.CacheRoot, Guid.NewGuid().ToString("N"));
-                var package = await new UpdateClient().DownloadAsync(update, directory);
-                string stage = await Task.Run(() => UpdateInstaller.StagePackage(package, directory, update.VersionText));
-                UpdateInstaller.LaunchHelper(stage, update.VersionText);
-                Application.Current.Shutdown();
+                try
+                {
+                    Process.Start(new ProcessStartInfo(update.ReleaseUrl) { UseShellExecute = true });
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine("Could not open release page: " + ex.GetType().Name);
+                    MessageBox.Show(this, "Open this official GitHub page in your browser to download the new EXE:\n\n" + update.ReleaseUrl +
+                        "\n\nClose SysInfo before replacing your old EXE. Your preferences stay in the Windows registry.",
+                        "Download SysInfo update", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine("Update check/download failed: " + ex.GetType().Name);
-                // Startup network/offline/rate-limit failures stay silent. A selected
-                // installation failure is shown by the download state below.
-                if (installing)
-                {
-                    SetCollectionState("Update failed", "The update was not installed. " + ex.Message, true);
-                    MessageBox.Show(this, "The update was not installed. The current app remains available.\n\n" + ex.Message,
-                        "SysInfo update", MessageBoxButton.OK, MessageBoxImage.Warning);
-                }
+                Debug.WriteLine("Update check failed: " + ex.GetType().Name); // Offline/startup failures stay silent.
+
             }
             finally
             {
                 _checkingUpdates = false;
                 if (lblStatus.Text == checking) SetCollectionState(previousStatus, previousDetails, previousActionable);
-                if (installing && IsVisible) SetBusy(false);
             }
         }
 
@@ -98,19 +91,20 @@ namespace CNSysInfo
             var panel = new StackPanel { Margin = new Thickness(20) };
             panel.Children.Add(new TextBlock { Text = "SysInfo " + update.VersionText + " is available", FontSize = 18, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap });
             panel.Children.Add(new TextBlock { Text = "Installed: " + typeof(App).Assembly.GetName().Version.ToString(3) +
-                "\nDownload, verify and restart SysInfo to update. Your preferences are retained.", Margin = new Thickness(0, 10, 0, 14), TextWrapping = TextWrapping.Wrap });
+                "\nOpen the official GitHub release page and download the EXE.\n\n1. Download the new EXE from Assets.\n2. Close SysInfo.\n3. Replace your old EXE and run the new one.\n\nKeep your old filename if you renamed it. Your preferences stay in the Windows registry.", Margin = new Thickness(0, 10, 0, 14), TextWrapping = TextWrapping.Wrap });
             var skip = new CheckBox { Content = "Skip this release", Margin = new Thickness(0, 0, 0, 8) };
-            var disable = new CheckBox { Content = "Don't check for updates automatically", Margin = new Thickness(0, 0, 0, 18) };
+            var disable = new CheckBox { Content = "Don't check for updates automatically", IsChecked = !settings.CheckOnStartup, Margin = new Thickness(0, 0, 0, 18) };
             panel.Children.Add(skip); panel.Children.Add(disable);
             var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
             var later = new Button { Content = "Not now", Padding = new Thickness(12, 6, 12, 6), Margin = new Thickness(0, 0, 8, 0), IsCancel = true };
-            var install = new Button { Content = "Update now", Padding = new Thickness(12, 6, 12, 6) };
+            var install = new Button { Content = "Open GitHub release", Padding = new Thickness(12, 6, 12, 6) };
             install.Click += (_, __) => { skip.IsChecked = false; DialogResult = true; };
             buttons.Children.Add(later); buttons.Children.Add(install); panel.Children.Add(buttons); Content = panel;
             Closing += (_, args) =>
             {
                 settings.CheckOnStartup = disable.IsChecked != true;
                 if (skip.IsChecked == true) settings.SkippedVersion = update.VersionText;
+                else if (settings.SkippedVersion == update.VersionText) settings.SkippedVersion = string.Empty;
                 try { settings.Save(); }
                 catch (Exception) { args.Cancel = true; MessageBox.Show(this, "Update preferences could not be saved. Please try again.", "SysInfo update"); }
             };

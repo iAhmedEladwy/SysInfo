@@ -51,9 +51,7 @@ namespace CNSysInfo.Tests
         [TestMethod]
         public void InvalidMissingOrWrongSourceArtifactsAreRejected()
         {
-            var release = Release(); release.Assets[0].Digest = null;
-            Assert.IsNull(UpdateLogic.Find(release, new Version(2, 2, 2), ""));
-            release = Release(); release.Assets[0].Url = release.Assets[0].Url.Replace("github.com", "github.com.evil.invalid");
+            var release = Release(); release.Assets[0].Url = release.Assets[0].Url.Replace("github.com", "github.com.evil.invalid");
             Assert.IsNull(UpdateLogic.Find(release, new Version(2, 2, 2), ""));
             release = Release(); release.Assets[0].Size = UpdateLogic.MaximumPackageBytes + 1;
             Assert.IsNull(UpdateLogic.Find(release, new Version(2, 2, 2), ""));
@@ -62,29 +60,16 @@ namespace CNSysInfo.Tests
         }
 
         [TestMethod]
-        public void InstalledNamesPreserveRenamedExecutablesAndLegacyJobs()
+        public void ManualDownloadUsesOnlyTheOfficialReleasePage()
         {
-            Assert.AreEqual("SysInfo.exe", UpdateLogic.InstalledExecutableName(null));
-            Assert.AreEqual("SysInfo.exe.config", UpdateLogic.InstalledFileName("SysInfo.exe.config", null));
-            Assert.AreEqual("SysInfo - Copy.exe", UpdateLogic.InstalledFileName("SysInfo.exe", "SysInfo - Copy.exe"));
-            Assert.AreEqual("My Tool.EXE.config", UpdateLogic.InstalledFileName("SysInfo.exe.config", "My Tool.EXE"));
-            Assert.AreEqual("System Info \u0627\u0644\u0646\u0638\u0627\u0645.exe", UpdateLogic.InstalledExecutableName("System Info \u0627\u0644\u0646\u0638\u0627\u0645.exe"));
-            Assert.ThrowsException<System.IO.InvalidDataException>(() => UpdateLogic.InstalledFileName("other.dll", "My Tool.exe"));
+            var release = Release(); release.Assets[0].Digest = null;
+            var update = UpdateLogic.Find(release, new Version(2, 2, 2), "");
+            Assert.IsNotNull(update); // The browser downloads; the app no longer verifies or executes binaries.
+            Assert.AreEqual("https://github.com/iAhmedEladwy/SysInfo/releases/tag/v2.2.3", update.ReleaseUrl);
+            Assert.IsNull(UpdateLogic.ReleasePageUrl("https://evil.invalid/v2.2.3"));
+            Assert.IsNull(UpdateLogic.ReleasePageUrl("../../v2.2.3"));
+            Assert.IsNull(UpdateLogic.ReleasePageUrl("v2.2.3?download=evil"));
         }
-
-        [DataTestMethod]
-        [DataRow("../Other.exe")]
-        [DataRow("folder\\Other.exe")]
-        [DataRow("C:\\Other.exe")]
-        [DataRow("Other.dll")]
-        [DataRow("Other.exe:stream")]
-        [DataRow("Other\n.exe")]
-        [DataRow("Other?.exe")]
-        public void InstalledNamesRejectPathsAndInvalidFileNames(string name)
-        {
-            Assert.ThrowsException<System.IO.InvalidDataException>(() => UpdateLogic.InstalledExecutableName(name));
-        }
-
         [TestMethod]
         public void CacheUnitsAreKilobytesAndUnavailableIsNotZero()
         {

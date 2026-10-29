@@ -27,10 +27,7 @@ namespace CNSysInfo
     {
         public string VersionText;
         public string PackageName;
-        public string PackageUrl;
-        public long PackageSize;
-        public string Sha256;
-        public string ChecksumUrl;
+        public string ReleaseUrl;
     }
 
     internal static class UpdateLogic
@@ -39,23 +36,6 @@ namespace CNSysInfo
         public const long MaximumPackageBytes = 200L * 1024 * 1024;
         public static string PackageName(string version) =>
             "SysInfo-v" + version + ".exe";
-
-        public static string InstalledExecutableName(string name)
-        {
-            if (string.IsNullOrEmpty(name)) return "SysInfo.exe"; // Jobs from earlier WPF versions.
-            if (name.Length <= 4 || !name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ||
-                name.IndexOfAny(new[] { '\\', '/', ':', '"', '<', '>', '|', '?', '*' }) >= 0 || name.Any(char.IsControl))
-                throw new InvalidDataException("Invalid installed application filename.");
-            return name;
-        }
-
-        public static string InstalledFileName(string packageFile, string executableName)
-        {
-            string name = InstalledExecutableName(executableName);
-            if (packageFile == "SysInfo.exe") return name;
-            if (packageFile == "SysInfo.exe.config") return name + ".config";
-            throw new InvalidDataException("Unexpected update file.");
-        }
 
         public static Version ParseVersion(string text)
         {
@@ -73,9 +53,11 @@ namespace CNSysInfo
                 uri.AbsolutePath == "/" + Repository + "/releases/download/" + Uri.EscapeDataString(tag) + "/" + assetName;
         }
 
-        public static bool ValidHash(string hash) => hash != null && hash.Length == 64 &&
-            hash.All(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'));
-
+        public static string ReleasePageUrl(string tag)
+        {
+            if (ParseVersion(tag) == null) return null;
+            return "https://github.com/" + Repository + "/releases/tag/" + Uri.EscapeDataString(tag);
+        }
         public static AppUpdate Find(GitHubRelease release, Version current, string skipped)
         {
             var version = ParseVersion(release?.Tag);
@@ -85,13 +67,7 @@ namespace CNSysInfo
             string name = PackageName(versionText);
             var asset = release.Assets?.SingleOrDefault(a => a.Name == name);
             if (asset == null || asset.Size <= 0 || asset.Size > MaximumPackageBytes || !ValidDownloadUrl(asset.Url, release.Tag, name)) return null;
-            string hash = asset.Digest?.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase) == true ? asset.Digest.Substring(7) : null;
-            var checksum = release.Assets.SingleOrDefault(a => a.Name == name + ".sha256");
-            string checksumUrl = checksum != null && checksum.Size > 0 && checksum.Size <= 1024 &&
-                ValidDownloadUrl(checksum.Url, release.Tag, checksum.Name) ? checksum.Url : null;
-            if (!ValidHash(hash) && checksumUrl == null) return null;
-            return new AppUpdate { VersionText = versionText, PackageName = name, PackageUrl = asset.Url,
-                PackageSize = asset.Size, Sha256 = ValidHash(hash) ? hash : null, ChecksumUrl = checksumUrl };
+            return new AppUpdate { VersionText = versionText, PackageName = name, ReleaseUrl = ReleasePageUrl(release.Tag) };
         }
     }
 }
