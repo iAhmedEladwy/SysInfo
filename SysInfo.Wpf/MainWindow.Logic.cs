@@ -24,6 +24,7 @@ namespace CNSysInfo
         public MainWindow()
         {
             BuildUi();
+            StartPowerMonitoring();
         }
 
         private static Brush B(string hex) { return (Brush)new BrushConverter().ConvertFromString(hex); }
@@ -50,6 +51,7 @@ namespace CNSysInfo
             btnCopy.IsEnabled = !busy && _ui != null;
             btnTools.IsEnabled = !busy;
             btnPower.IsEnabled = !busy;
+            btnTests.IsEnabled = !busy;
             Mouse.OverrideCursor = busy ? Cursors.Wait : null;
         }
 
@@ -177,6 +179,7 @@ namespace CNSysInfo
             txtScreen.Text = Presentation.ScreenText(s.Monitors);
 
             txtBattery.Text = Presentation.BatteryText(s.BatteryInfo);
+            txtBattery.ToolTip = BatteryCapacityDetails(s.BatteryInfo);
             var bi = s.BatteryInfo;
             if (bi == null || bi.Status == "Not Detected")
                 Bar(pbBattery, lblBattery, null, Presentation.Unknown, "N/A");
@@ -184,6 +187,10 @@ namespace CNSysInfo
                 Bar(pbBattery, lblBattery, bi.HealthPercentage, Presentation.ForHealth(bi.HealthPercentage.Value), bi.HealthPercentage.Value + "%");
             else
                 Bar(pbBattery, lblBattery, null, Presentation.Unknown, "Unknown");
+
+            _batteryNeedsRefresh = false;
+            _livePower = null; // Refresh establishes a new health snapshot.
+            UpdateLivePower();
 
             string upgrades;
             var level = Presentation.Rate(s, out upgrades);

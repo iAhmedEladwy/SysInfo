@@ -9,12 +9,7 @@ namespace CNSysInfo
         public static string BatteryText(BatteryInfo b)
         {
             if (b == null || b.Status == "Not Detected") return "No battery detected (Desktop PC).";
-            var health = b.HealthPercentage.HasValue ? b.HealthPercentage.Value + "%" : "Unknown";
-            var status = string.IsNullOrWhiteSpace(b.Status) ? "" : " - " + b.Status;
-            var cap = new List<string>();
-            if (b.DesignCapacity.HasValue) cap.Add("Design " + BatteryCapacity(b.DesignCapacity.Value));
-            if (b.FullChargeCapacity.HasValue) cap.Add("Full " + BatteryCapacity(b.FullChargeCapacity.Value));
-            return health + status + (cap.Count > 0 ? " (" + string.Join(", ", cap) + ")" : "");
+            return BatteryMapper.ChargeAndPowerText(b.ChargeLevel, b.Status);
         }
 
         public static string StorageText(IReadOnlyList<DiskInfo> disks)

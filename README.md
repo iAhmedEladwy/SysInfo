@@ -20,6 +20,15 @@ The updater downloads the release EXE, checks SHA-256 integrity and the embedded
 
 Click the version and **About** text in the footer to see the app version, ELADWYSOFT branding, developer contact and GitHub links.
 
+## Interactive checks and live power
+
+The **Tests** menu opens separate keyboard, stereo speaker and camera windows. Keyboard highlights apply only while the test is focused; Fn and reserved Windows shortcuts may be unavailable. Stereo checks use the default Windows playback device, short generated left/right tones and a Stop button. Mono audio, balance and output routing can affect what you hear. Camera preview starts only after selecting **Start preview**, stops when the test loses focus or closes, and does not record or save media. Camera access may require Windows desktop-app camera permission.
+
+These are interactive functional checks, not automatic hardware-health certification. Screen and mouse tests are not included yet.
+
+The **Charge / power** row reads live Windows status every two seconds and on power notifications, independently of the full hardware scan. It distinguishes charging, plugged in but not charging, on battery, full charge and unavailable readings. Battery health/capacity still come from the captured hardware snapshot and update with Refresh; a battery presence change asks for a health refresh. Live values do not rewrite the report's captured snapshot or capture timestamp. Capacity details are available in the battery tooltip.
+
+Startup width is 760 logical pixels (previously 800). The six-button toolbar stays on one line at the minimum width; opening a test or receiving a power update does not resize the main window. Initial content fitting is capped to the previous layout height; long wrapped values use the existing content scroll.
 ## Resource reminders
 
 Compact badges beside the existing meters show high RAM use at 80% and critical use at 95%. The Windows system-volume badge warns at 10 GB or less free, or at 10% or less when no more than 20 GB remains. It becomes critical at 2 GB or less, or at 5% or less when no more than 5 GB remains. Tooltips provide cleanup and app-management guidance. Readings and badges update when you use Refresh; these are snapshot reminders rather than continuous monitoring.
@@ -35,8 +44,10 @@ With the .NET 8 SDK:
 ```powershell
 dotnet test SysInfo.Tests -c Release
 dotnet build SysInfo.Wpf -c Release
-./scripts/Package-Release.ps1 -Version 2.2.7
+./scripts/Package-Release.ps1 -Version 2.2.8
 ```
+
+Windows UI/power lifecycle checks are available in `scripts/Test-Diagnostics.ps1` (run with `powershell.exe -STA -File scripts/Test-Diagnostics.ps1 -Executable <built EXE>`). They exercise the actual menu/dialog paths, ensure camera/audio do not start automatically, verify stable main-window sizing, and check power-monitor shutdown. They do not replace physical keyboard/audio/camera/charger acceptance.
 
 Cross-drive updater regression testing is available in `scripts/Test-UpdaterCrossDrive.ps1`. Run it in Windows PowerShell with `-Executable`, `-Package` and an existing `-TargetRoot` on a different drive from the updater cache. It creates and cleans disposable installation folders.
 

@@ -67,6 +67,7 @@ namespace CNSysInfo
         private Button btnCopy;
         private Button btnTools;
         private Button btnPower;
+        private Button btnTests;
         private StackPanel content;
         private Border ratingBanner;
         private TextBlock ratingCaption;
@@ -219,10 +220,16 @@ namespace CNSysInfo
             _initialFitCompleted = true;
             UpdateLayout();
             var work = WorkingArea();
-            content.Measure(new Size(Math.Max(1, contentScroll.ViewportWidth), double.PositiveInfinity));
+            var availableWidth = Math.Max(1, contentScroll.ViewportWidth);
+            // Narrower startup width must never grow the previous 800-wide window's height.
+            // If unusually long hardware values wrap, the existing content scroll handles the overflow.
+            var previousWidthDifference = Math.Max(0, Math.Min(800, work.Width) - ActualWidth);
+            content.Measure(new Size(availableWidth + previousWidthDifference, double.PositiveInfinity));
+            var previousContentHeight = content.DesiredSize.Height;
+            content.Measure(new Size(availableWidth, double.PositiveInfinity));
             var chrome = Math.Max(0, ActualHeight - ((FrameworkElement)Content).ActualHeight);
             Height = Math.Min(work.Height, Math.Max(MinHeight,
-                content.DesiredSize.Height + toolbar.ActualHeight + statusBorder.ActualHeight + chrome + 12));
+                Math.Min(content.DesiredSize.Height, previousContentHeight) + toolbar.ActualHeight + statusBorder.ActualHeight + chrome + 12));
             Left = Math.Max(work.Left, work.Left + (work.Width - ActualWidth) / 2);
             Top = Math.Max(work.Top, work.Top + (work.Height - Height) / 2);
         }
@@ -287,7 +294,8 @@ namespace CNSysInfo
             return new Button
             {
                 Content = text,
-                Padding = new Thickness(9, 4, 9, 4),
+                Padding = new Thickness(7, 4, 7, 4),
+                FontSize = 11,
                 Margin = new Thickness(0, 0, 6, 2),
                 Background = Brushes.White,
                 BorderBrush = LineBrush,
@@ -338,7 +346,7 @@ namespace CNSysInfo
         {
             Title = "SysInfo";
             var work = SystemParameters.WorkArea;
-            Width = Math.Min(800, work.Width);
+            Width = Math.Min(760, work.Width);
             Height = Math.Min(720, work.Height);
             MinWidth = Math.Min(520, work.Width);
             MinHeight = Math.Min(400, work.Height);
@@ -404,16 +412,16 @@ namespace CNSysInfo
             // toolbar
             toolbar = new Border { Padding = new Thickness(8, 8, 8, 2) };
             DockPanel.SetDock(toolbar, Dock.Top);
-            var bar = new WrapPanel { Orientation = Orientation.Horizontal };
+            var bar = new StackPanel { Orientation = Orientation.Horizontal };
 
             btnRefresh = ToolButton("Refresh (F5)");
             btnRefresh.Click += Refresh_Click;
-            btnExport = ToolButton("Export report");
+            btnExport = ToolButton("Export");
             btnExport.Click += Export_Click;
             btnCopy = ToolButton("Copy info");
             btnCopy.Click += Copy_Click;
 
-            btnTools = ToolButton("Windows tools");
+            btnTools = ToolButton("Tools ▾");
             btnTools.Click += Menu_Click;
             var toolsMenu = new ContextMenu { Background = Brushes.White, Foreground = InkBrush };
             toolsMenu.Items.Add(ToolMenuItem("Disk Management", "diskmgmt.msc", Tool_Click));
@@ -430,6 +438,15 @@ namespace CNSysInfo
             toolsMenu.Items.Add(ToolMenuItem("Update settings", null, UpdateSettings_Click));
             btnTools.ContextMenu = toolsMenu;
 
+            btnTests = ToolButton("Tests ▾");
+            btnTests.Click += Menu_Click;
+            btnTests.ToolTip = "Keyboard, stereo speakers and camera checks";
+            var testsMenu = new ContextMenu { Background = Brushes.White, Foreground = InkBrush };
+            testsMenu.Items.Add(ToolMenuItem("Keyboard test", null, (_, __) => ShowDiagnostic(new KeyboardTestWindow())));
+            testsMenu.Items.Add(ToolMenuItem("Stereo speaker test", null, (_, __) => ShowDiagnostic(new StereoSpeakerTestWindow())));
+            testsMenu.Items.Add(ToolMenuItem("Camera test", null, (_, __) => ShowDiagnostic(new CameraTestWindow())));
+            btnTests.ContextMenu = testsMenu;
+
             btnPower = ToolButton("Restart...");
             btnPower.Click += Menu_Click;
             var powerMenu = new ContextMenu { Background = Brushes.White, Foreground = InkBrush };
@@ -443,6 +460,7 @@ namespace CNSysInfo
             bar.Children.Add(btnExport);
             bar.Children.Add(btnCopy);
             bar.Children.Add(btnTools);
+            bar.Children.Add(btnTests);
             bar.Children.Add(btnPower);
             toolbar.Child = bar;
             root.Children.Add(toolbar);
@@ -529,7 +547,7 @@ namespace CNSysInfo
                 SheetSection("STORAGE",
                     Row("Drive / health", txtStorage), Row("Space used", MeterRow(pbDisk, lblDisk, systemDriveWarningBadge))),
                 SheetSection("BATTERY",
-                    Row("Power / capacity", txtBattery), Row("Battery health", MeterRow(pbBattery, lblBattery))),
+                    Row("Charge / power", txtBattery), Row("Battery health", MeterRow(pbBattery, lblBattery))),
                 SheetSection("GRAPHICS & DISPLAYS",
                     Row("Graphics", txtGpu), Row("Displays", txtScreen)));
             content.Children.Add(sheet);

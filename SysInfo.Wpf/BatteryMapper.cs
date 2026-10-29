@@ -76,6 +76,13 @@ namespace CNSysInfo
             return ac.HasValue ? (ac.Value ? "Plugged in" : "On battery") : "Unknown";
         }
 
+        public static string ChargeAndPowerText(int? charge, string status)
+        {
+            string percentage = charge.HasValue && charge.Value >= 0 && charge.Value <= 100
+                ? charge.Value + "%" : "Charge unknown";
+            return percentage + (string.IsNullOrWhiteSpace(status) ? "" : " · " + status);
+        }
+
         /// <summary>Positive capacity or null. WMI returns 0 or null when the firmware does not report it.</summary>
         public static int? NormalizeCapacity(ulong? raw)
         {
