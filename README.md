@@ -20,6 +20,10 @@ The update checker only reads release metadata and opens a release URL built for
 
 Click the version and **About** text in the footer to see the app version, ELADWYSOFT branding, developer contact and GitHub links.
 
+## Copy individual values
+
+Double-click a displayed hardware value, or right-click it and choose **Copy value**. Keyboard users can focus a value and press **Ctrl+C**. This copies the full current value, including multiline or visually truncated text and live battery/power information. Percentage captions and the rating are also copyable. The existing **Copy info** action still copies the report. These actions only write to the Windows clipboard when requested.
+
 ## Interactive checks and live power
 
 The **Tests** menu opens separate keyboard, stereo speaker and camera windows. Keyboard highlights apply only while the test is focused; Fn and reserved Windows shortcuts may be unavailable. Stereo checks use the default Windows playback device, short generated left/right tones and a Stop button. Mono audio, balance and output routing can affect what you hear. Camera preview starts only after selecting **Start preview**, stops when the test loses focus or closes, and does not record or save media. Camera access may require Windows desktop-app camera permission.
@@ -44,7 +48,7 @@ With the .NET 8 SDK:
 ```powershell
 dotnet test SysInfo.Tests -c Release
 dotnet build SysInfo.Wpf -c Release
-./scripts/Package-Release.ps1 -Version 2.2.9
+./scripts/Package-Release.ps1 -Version 2.2.10
 ```
 
 Windows UI/power lifecycle checks are available in `scripts/Test-Diagnostics.ps1` (run with `powershell.exe -STA -File scripts/Test-Diagnostics.ps1 -Executable <built EXE>`). They exercise the actual menu/dialog paths, ensure camera/audio do not start automatically, verify stable main-window sizing, and check power-monitor shutdown. They do not replace physical keyboard/audio/camera/charger acceptance.

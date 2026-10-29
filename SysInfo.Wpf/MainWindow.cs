@@ -255,7 +255,7 @@ namespace CNSysInfo
 
         private static TextBlock RowValue(string name)
         {
-            return new TextBlock { Text = "...", FontSize = 12, Foreground = InkBrush, TextWrapping = TextWrapping.Wrap };
+            return CopyableValue.Attach(new TextBlock { Text = "...", FontSize = 12, Foreground = InkBrush, TextWrapping = TextWrapping.Wrap });
         }
 
         private static Grid Row(string label, UIElement value)
@@ -286,7 +286,7 @@ namespace CNSysInfo
 
         private static TextBlock BarCaption()
         {
-            return new TextBlock { Text = "", FontSize = 10, Foreground = MutedBrush, Margin = new Thickness(0, 2, 0, 0) };
+            return CopyableValue.Attach(new TextBlock { Text = "", FontSize = 10, Foreground = MutedBrush, Margin = new Thickness(0, 2, 0, 0) });
         }
 
         private static Button ToolButton(string text)
@@ -482,6 +482,7 @@ namespace CNSysInfo
             txtRating = new TextBlock { FontSize = 15, FontWeight = FontWeights.SemiBold,
                 TextWrapping = TextWrapping.Wrap, Text = "Evaluating...", TextAlignment = TextAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center };
+            CopyableValue.Attach(txtRating);
             ratingLayout = new Grid();
             ratingLayout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(110) });
             ratingLayout.ColumnDefinitions.Add(new ColumnDefinition());
