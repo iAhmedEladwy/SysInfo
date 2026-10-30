@@ -296,7 +296,7 @@ namespace CNSysInfo
                 Content = text,
                 Padding = new Thickness(4, 4, 4, 4),
                 FontSize = 11,
-                Margin = new Thickness(0, 0, 6, 2),
+                Margin = new Thickness(0, 0, 4, 2),
                 Background = Brushes.White,
                 BorderBrush = LineBrush,
                 BorderThickness = new Thickness(1),
@@ -460,9 +460,17 @@ namespace CNSysInfo
             bar.Children.Add(btnExport);
             bar.Children.Add(btnCopy);
             bar.Children.Add(btnTools);
-            bar.Children.Add(btnKeyboard);
-            bar.Children.Add(btnSpeakers);
-            bar.Children.Add(btnCamera);
+            var tests = new StackPanel { Orientation = Orientation.Horizontal };
+            tests.Children.Add(new TextBlock { Text = "Tests:", FontSize = 10.5, FontWeight = FontWeights.SemiBold,
+                Foreground = AccentBrush, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(2, 0, 4, 2) });
+            btnKeyboard.Margin = new Thickness(0, 0, 2, 2);
+            btnSpeakers.Margin = new Thickness(0, 0, 2, 2);
+            btnCamera.Margin = new Thickness(0, 0, 0, 2);
+            tests.Children.Add(btnKeyboard); tests.Children.Add(btnSpeakers); tests.Children.Add(btnCamera);
+            var testGroup = new Border { Child = tests, Background = Freeze("#EAF3FF"), CornerRadius = new CornerRadius(6),
+                Padding = new Thickness(3, 0, 3, 0), Margin = new Thickness(0, 0, 4, 0) };
+            System.Windows.Automation.AutomationProperties.SetName(testGroup, "Hardware tests");
+            bar.Children.Add(testGroup);
             bar.Children.Add(btnPower);
             toolbar.Child = bar;
             root.Children.Add(toolbar);

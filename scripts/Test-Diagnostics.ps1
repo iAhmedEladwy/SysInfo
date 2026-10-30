@@ -34,6 +34,8 @@ try{
  if(!$powerTimer.IsEnabled){throw 'Live monitoring did not start'}
  $testButtons=@('btnKeyboard','btnSpeakers','btnCamera' | ForEach-Object {Field $window $_})
  if($testButtons.Count -ne 3 -or @($testButtons | Where-Object {$_.ContextMenu}).Count -ne 0){throw 'Tests must be directly available as toolbar buttons'}
+ $group=$testButtons[0].Parent
+ if($group.Children[0].Text -ne 'Tests:' -or $testButtons[1].Parent -ne $group -or $testButtons[2].Parent -ne $group){throw 'Discoverable Tests group label missing'}
  $toolbar=Field $window 'toolbar'
  if($toolbar.Child.DesiredSize.Width -gt 488){throw ('Toolbar does not fit minimum width: '+$toolbar.Child.DesiredSize.Width)}
  $script:checked=$null;$script:dialogFailure=$null
