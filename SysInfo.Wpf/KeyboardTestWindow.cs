@@ -10,85 +10,104 @@ namespace CNSysInfo
     internal sealed class KeyboardTestWindow : Window
     {
         private readonly DiagnosticKeyState state = new DiagnosticKeyState();
-        private readonly Dictionary<Key, Border> keyTiles = new Dictionary<Key, Border>();
-        private readonly StackPanel numpad = new StackPanel();
-        private readonly TextBlock status = new TextBlock();
+        private readonly Dictionary<Key, List<Border>> keyTiles = new Dictionary<Key, List<Border>>();
+        private readonly Grid numpad;
+        private readonly TextBlock status = new TextBlock { FontSize = 11, Foreground = Muted, VerticalAlignment = VerticalAlignment.Center };
         private static readonly Brush Ink = Brush("#0B1F3A"), Muted = Brush("#5B6B80"), Blue = Brush("#0078D4"), Tested = Brush("#D7EDFF");
+        private const double Unit = 38;
 
         public KeyboardTestWindow()
         {
             DiagnosticUi.Apply(this);
-            Title = "Keyboard test";
-            SizeToContent = SizeToContent.WidthAndHeight;
+            Title = "Keyboard test"; SizeToContent = SizeToContent.WidthAndHeight;
             MaxWidth = SystemParameters.WorkArea.Width; MaxHeight = SystemParameters.WorkArea.Height;
-            ResizeMode = ResizeMode.CanMinimize;
-            WindowStartupLocation = WindowStartupLocation.CenterOwner;
+            ResizeMode = ResizeMode.CanMinimize; WindowStartupLocation = WindowStartupLocation.CenterOwner;
+            Focusable = true;
             Background = Brushes.White; Foreground = Ink; FontFamily = new FontFamily("Segoe UI"); FontSize = 12;
-            var body = new DockPanel { Margin = new Thickness(16) };
-            var footer = new StackPanel { Margin = new Thickness(0, 12, 0, 0) };
-            DockPanel.SetDock(footer, Dock.Bottom);
-            var actions = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
-            var reset = Button("Reset"); reset.Click += (_, __) => { state.Reset(); Paint(); status.Text = "Ready. Press a key to begin."; };
-            var close = Button("Close"); close.Click += (_, __) => Close();
-            actions.Children.Add(reset); actions.Children.Add(close);
-            footer.Children.Add(new TextBlock { Text = "Blue: pressed    Light blue: tested    White: not tested", Foreground = Muted, Margin = new Thickness(0, 0, 0, 8) });
-            footer.Children.Add(status); footer.Children.Add(actions); body.Children.Add(footer);
-            var help = new StackPanel(); DockPanel.SetDock(help, Dock.Top);
-            help.Children.Add(new TextBlock { Text = "Press keys while this window is active. Tab still moves between controls.", TextWrapping = TextWrapping.Wrap });
-            help.Children.Add(new TextBlock { Text = "Fn and Windows-reserved shortcuts may not be reported. An untested key is not a failed key.", Foreground = Muted, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 8) });
-            var show = new CheckBox { Content = "Show numpad", IsChecked = false, Margin = new Thickness(0, 0, 0, 8) };
-            show.Checked += (_, __) => numpad.Visibility = Visibility.Visible; show.Unchecked += (_, __) => numpad.Visibility = Visibility.Collapsed;
-            help.Children.Add(show); body.Children.Add(help);
+            var body = new DockPanel { Margin = new Thickness(12) };
+            var header = new DockPanel { Margin = new Thickness(2, 0, 2, 8) };
+            DockPanel.SetDock(header, Dock.Top);
+            var reset = Button("Reset"); reset.Margin = new Thickness(10, 0, 0, 0); reset.Padding = new Thickness(12, 4, 12, 4); reset.MinWidth = 64;
+            reset.Click += (_, __) => { state.Reset(); Paint(); SetStatus("Ready"); Keyboard.Focus(this); };
+            DockPanel.SetDock(reset, Dock.Right); header.Children.Add(reset); header.Children.Add(status); body.Children.Add(header);
+
             var keyboard = new StackPanel { Orientation = Orientation.Horizontal };
-            var main = new StackPanel(); keyboard.Children.Add(main);
-            AddRow(main, new[]{Key.Escape,Key.F1,Key.F2,Key.F3,Key.F4,Key.F5,Key.F6,Key.F7,Key.F8,Key.F9,Key.F10,Key.F11,Key.F12,Key.PrintScreen,Key.Scroll,Key.Pause}, new[]{"Esc","F1","F2","F3","F4","F5","F6","F7","F8","F9","F10","F11","F12","PrtSc","ScrLk","Pause"});
-            AddRow(main, new[]{Key.Oem3,Key.D1,Key.D2,Key.D3,Key.D4,Key.D5,Key.D6,Key.D7,Key.D8,Key.D9,Key.D0,Key.OemMinus,Key.OemPlus,Key.Back}, new[]{"`","1","2","3","4","5","6","7","8","9","0","-","=","Back"});
-            AddRow(main, new[]{Key.Tab,Key.Q,Key.W,Key.E,Key.R,Key.T,Key.Y,Key.U,Key.I,Key.O,Key.P,Key.OemOpenBrackets,Key.OemCloseBrackets,Key.Oem5}, new[]{"Tab","Q","W","E","R","T","Y","U","I","O","P","[","]","\\"});
-            AddRow(main, new[]{Key.Capital,Key.A,Key.S,Key.D,Key.F,Key.G,Key.H,Key.J,Key.K,Key.L,Key.Oem1,Key.OemQuotes,Key.Return}, new[]{"Caps","A","S","D","F","G","H","J","K","L",";","'","Enter"});
-            AddRow(main, new[]{Key.LeftShift,Key.Oem102,Key.Z,Key.X,Key.C,Key.V,Key.B,Key.N,Key.M,Key.OemComma,Key.OemPeriod,Key.OemQuestion,Key.RightShift}, new[]{"LShift","ISO","Z","X","C","V","B","N","M",",",".","/","RShift"});
-            AddRow(main, new[]{Key.LeftCtrl,Key.LWin,Key.LeftAlt,Key.Space,Key.RightAlt,Key.RWin,Key.Apps,Key.RightCtrl}, new[]{"LCtrl","LWin","LAlt","Space","RAlt","RWin","Menu","RCtrl"});
-            AddRow(main, new[]{Key.Insert,Key.Delete,Key.Home,Key.End,Key.Prior,Key.Next,Key.Left,Key.Down,Key.Up,Key.Right}, new[]{"Ins","Del","Home","End","PgUp","PgDn","←","↓","↑","→"});
-            numpad.Margin = new Thickness(12, 0, 0, 0); numpad.Visibility = Visibility.Collapsed; keyboard.Children.Add(numpad);
-            AddRow(numpad,new[]{Key.NumLock,Key.Divide,Key.Multiply,Key.Subtract},new[]{"Num","/","*","-"});
-            AddRow(numpad,new[]{Key.NumPad7,Key.NumPad8,Key.NumPad9,Key.Add},new[]{"7","8","9","+"});
-            AddRow(numpad,new[]{Key.NumPad4,Key.NumPad5,Key.NumPad6},new[]{"4","5","6"});
-            AddRow(numpad,new[]{Key.NumPad1,Key.NumPad2,Key.NumPad3},new[]{"1","2","3"});
-            AddRow(numpad,new[]{Key.NumPad0,Key.Decimal},new[]{"0","."});
-            numpad.Children.Add(new TextBlock { Text = "Enter shares the main\nEnter indication.", Foreground = Muted, Margin = new Thickness(2, 6, 0, 0) });
-            var viewer = new ScrollViewer { Content = keyboard, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+            var main = KeyGrid(15); keyboard.Children.Add(main);
+            AddKey(main, Key.Escape, "Esc", 0, 0);
+            var functions = new[] { Key.F1, Key.F2, Key.F3, Key.F4, Key.F5, Key.F6, Key.F7, Key.F8, Key.F9, Key.F10, Key.F11, Key.F12 };
+            for (int i = 0; i < functions.Length; i++) AddKey(main, functions[i], "F" + (i + 1), 2 + i + (i / 4) * 0.5, 0);
+            AddKey(main, Key.Oem3, "`", 0, 1);
+            var digits = new[] { Key.D1, Key.D2, Key.D3, Key.D4, Key.D5, Key.D6, Key.D7, Key.D8, Key.D9, Key.D0 };
+            for (int i = 0; i < digits.Length; i++) AddKey(main, digits[i], i == 9 ? "0" : (i + 1).ToString(), i + 1, 1);
+            AddKey(main, Key.OemMinus, "-", 11, 1); AddKey(main, Key.OemPlus, "=", 12, 1); AddKey(main, Key.Back, "Backspace", 13, 1, 2);
+            AddKey(main, Key.Tab, "Tab", 0, 2, 1.5);
+            AddLetters(main, "QWERTYUIOP", 1.5, 2);
+            AddKey(main, Key.OemOpenBrackets, "[", 11.5, 2); AddKey(main, Key.OemCloseBrackets, "]", 12.5, 2); AddKey(main, Key.Oem5, "\\", 13.5, 2, 1.5);
+            AddKey(main, Key.Capital, "Caps", 0, 3, 1.75); AddLetters(main, "ASDFGHJKL", 1.75, 3);
+            AddKey(main, Key.Oem1, ";", 10.75, 3); AddKey(main, Key.OemQuotes, "'", 11.75, 3); AddKey(main, Key.Return, "Enter", 12.75, 3, 2.25);
+            AddKey(main, Key.LeftShift, "Shift", 0, 4, 2.25); AddLetters(main, "ZXCVBNM", 2.25, 4);
+            AddKey(main, Key.OemComma, ",", 9.25, 4); AddKey(main, Key.OemPeriod, ".", 10.25, 4); AddKey(main, Key.OemQuestion, "/", 11.25, 4); AddKey(main, Key.RightShift, "Shift", 12.25, 4, 2.75);
+            AddKey(main, Key.LeftCtrl, "Ctrl", 0, 5, 1.25); AddKey(main, Key.LWin, "Win", 1.25, 5, 1.25); AddKey(main, Key.LeftAlt, "Alt", 2.5, 5, 1.25);
+            AddKey(main, Key.Space, "Space", 3.75, 5, 6.25); AddKey(main, Key.RightAlt, "Alt", 10, 5, 1.25); AddKey(main, Key.RWin, "Win", 11.25, 5, 1.25); AddKey(main, Key.Apps, "Menu", 12.5, 5, 1.25); AddKey(main, Key.RightCtrl, "Ctrl", 13.75, 5, 1.25);
+
+            var navigation = KeyGrid(3); navigation.Margin = new Thickness(12, 0, 12, 0); keyboard.Children.Add(navigation);
+            AddKey(navigation, Key.PrintScreen, "PrtSc", 0, 0); AddKey(navigation, Key.Scroll, "ScrLk", 1, 0); AddKey(navigation, Key.Pause, "Pause", 2, 0);
+            AddKey(navigation, Key.Insert, "Ins", 0, 1); AddKey(navigation, Key.Home, "Home", 1, 1); AddKey(navigation, Key.Prior, "PgUp", 2, 1);
+            AddKey(navigation, Key.Delete, "Del", 0, 2); AddKey(navigation, Key.End, "End", 1, 2); AddKey(navigation, Key.Next, "PgDn", 2, 2);
+            AddKey(navigation, Key.Up, "↑", 1, 4); AddKey(navigation, Key.Left, "←", 0, 5); AddKey(navigation, Key.Down, "↓", 1, 5); AddKey(navigation, Key.Right, "→", 2, 5);
+
+            numpad = KeyGrid(4); keyboard.Children.Add(numpad);
+            AddKey(numpad, Key.NumLock, "Num", 0, 1); AddKey(numpad, Key.Divide, "/", 1, 1); AddKey(numpad, Key.Multiply, "*", 2, 1); AddKey(numpad, Key.Subtract, "-", 3, 1);
+            AddKey(numpad, Key.NumPad7, "7", 0, 2); AddKey(numpad, Key.NumPad8, "8", 1, 2); AddKey(numpad, Key.NumPad9, "9", 2, 2); AddKey(numpad, Key.Add, "+", 3, 2, 1, 2);
+            AddKey(numpad, Key.NumPad4, "4", 0, 3); AddKey(numpad, Key.NumPad5, "5", 1, 3); AddKey(numpad, Key.NumPad6, "6", 2, 3);
+            AddKey(numpad, Key.NumPad1, "1", 0, 4); AddKey(numpad, Key.NumPad2, "2", 1, 4); AddKey(numpad, Key.NumPad3, "3", 2, 4); AddKey(numpad, Key.Return, "Enter", 3, 4, 1, 2);
+            AddKey(numpad, Key.NumPad0, "0", 0, 5, 2); AddKey(numpad, Key.Decimal, ".", 2, 5);
+            var viewer = new ScrollViewer { Content = keyboard, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                MaxWidth = Math.Max(100, SystemParameters.WorkArea.Width - 48), MaxHeight = Math.Max(100, SystemParameters.WorkArea.Height - 110) };
             body.Children.Add(viewer); Content = body;
-            status.Text = "Ready. Press a key to begin.";
+            SetStatus("Ready");
             PreviewKeyDown += OnDown; PreviewKeyUp += OnUp;
-            Deactivated += (_, __) => { state.LoseFocus(); Paint(); status.Text = "Paused while this window is inactive."; };
-            Activated += (_, __) => status.Text = "Ready. Press a key to begin.";
-            LostKeyboardFocus += (_, __) => Dispatcher.BeginInvoke(new Action(() =>
-            {
-                if (!IsKeyboardFocusWithin) { state.LoseFocus(); Paint(); }
-            }));
+            Loaded += (_, __) => Keyboard.Focus(this);
+            Deactivated += (_, __) => { state.LoseFocus(); Paint(); SetStatus("Paused"); };
+            Activated += (_, __) => SetStatus("Ready");
+            LostKeyboardFocus += (_, __) => Dispatcher.BeginInvoke(new Action(() => { if (!IsKeyboardFocusWithin) { state.LoseFocus(); Paint(); } }));
         }
-        private void AddRow(Panel host, Key[] keys, string[] labels)
+
+        private void SetStatus(string message) => status.Text = "Press keys · Blue: pressed / Pale blue: tested / White: not tested · " + message;
+
+        private static Grid KeyGrid(int columns)
         {
-            var row = new StackPanel { Orientation = Orientation.Horizontal };
-            for (int i = 0; i < keys.Length; i++)
-            {
-                var tile = new Border { Width = keys[i] == Key.Space ? 150 : labels[i].Length > 3 ? 45 : 35, Height = 34,
-                    Margin = new Thickness(2), Background = Brushes.White, BorderBrush = Brush("#CBD5E1"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4),
-                    Child = new TextBlock { Text = labels[i], HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, FontSize = 11 }, ToolTip = keys[i].ToString() };
-                System.Windows.Automation.AutomationProperties.SetName(tile, labels[i]);
-                keyTiles[keys[i]] = tile; row.Children.Add(tile);
-            }
-            host.Children.Add(row);
+            var grid = new Grid { Width = columns * Unit, Height = 6 * Unit };
+            // Quarter-unit columns support natural key widths; rowspans support numpad + and Enter.
+            for (int i = 0; i < columns * 4; i++) grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Unit / 4) });
+            for (int i = 0; i < 6; i++) grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(Unit) });
+            return grid;
+        }
+
+        private void AddLetters(Grid grid, string letters, double column, int row)
+        {
+            for (int i = 0; i < letters.Length; i++) AddKey(grid, (Key)Enum.Parse(typeof(Key), letters[i].ToString()), letters[i].ToString(), column + i, row);
+        }
+
+        private void AddKey(Grid grid, Key key, string label, double column, int row, double width = 1, int height = 1)
+        {
+            var tile = new Border { Margin = new Thickness(2), Background = Brushes.White, BorderBrush = Brush("#CBD5E1"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4),
+                Child = new TextBlock { Text = label, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, FontSize = 11 },
+                ToolTip = key == Key.Return ? "Main Enter and numpad Enter share this indication." : key.ToString() };
+            Grid.SetColumn(tile, (int)(column * 4)); Grid.SetColumnSpan(tile, (int)(width * 4)); Grid.SetRow(tile, row); Grid.SetRowSpan(tile, height);
+            System.Windows.Automation.AutomationProperties.SetName(tile, key.ToString());
+            if (!keyTiles.TryGetValue(key, out var tiles)) { tiles = new List<Border>(); keyTiles.Add(key, tiles); }
+            tiles.Add(tile); grid.Children.Add(tile);
         }
         private void OnDown(object sender, KeyEventArgs e)
         {
             if (!IsActive) return;
             var key = e.Key == Key.System ? e.SystemKey : e.Key;
             if (key == Key.ImeProcessed) key = e.ImeProcessedKey;
-            state.Press((int)key); Paint(); status.Text = "Detected: " + key + (e.IsRepeat ? " (held)" : "");
+            state.Press((int)key); Paint(); SetStatus("Detected: " + key + (e.IsRepeat ? " (held)" : ""));
             // Preserve accessible Tab traversal and activation of focused controls.
             bool controlAction = Keyboard.FocusedElement is System.Windows.Controls.Primitives.ButtonBase && (key == Key.Space || key == Key.Return);
-            bool checkboxAction = Keyboard.FocusedElement is CheckBox && key == Key.Space;
-            if (key != Key.Tab && !controlAction && !checkboxAction) e.Handled = true;
+            if (key != Key.Tab && !controlAction) e.Handled = true;
         }
         private void OnUp(object sender, KeyEventArgs e)
         {
@@ -103,8 +122,11 @@ namespace CNSysInfo
             foreach (var item in keyTiles)
             {
                 bool held = state.IsHeld((int)item.Key);
-                item.Value.Background = held ? Blue : state.IsTested((int)item.Key) ? Tested : Brushes.White;
-                ((TextBlock)item.Value.Child).Foreground = held ? Brushes.White : Ink;
+                foreach (var tile in item.Value)
+                {
+                    tile.Background = held ? Blue : state.IsTested((int)item.Key) ? Tested : Brushes.White;
+                    ((TextBlock)tile.Child).Foreground = held ? Brushes.White : Ink;
+                }
             }
         }
         private static Brush Brush(string color) => (Brush)new BrushConverter().ConvertFromString(color);

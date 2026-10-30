@@ -45,12 +45,18 @@ try{
     try{
      $script:checked=$dialog.Title
      if($dialog.Title -eq 'Keyboard test'){
-      $dialog.UpdateLayout();$compactWidth=$dialog.ActualWidth
-      if($compactWidth -gt 740){throw 'Keyboard window has unnecessary empty width'}
-      $pad=Field $dialog 'numpad';$pad.Visibility='Visible';$dialog.UpdateLayout()
-      if($dialog.ActualWidth -le $compactWidth){throw 'Keyboard did not fit the visible numpad'}
-      $pad.Visibility='Collapsed';$dialog.UpdateLayout()
-      if([Math]::Abs($dialog.ActualWidth-$compactWidth) -gt 1){throw 'Keyboard did not shrink after hiding numpad'}
+      $dialog.UpdateLayout()
+      if($dialog.ActualWidth -gt 925 -or $dialog.ActualHeight -gt 360){throw 'Keyboard test has unnecessary empty space'}
+      $pad=Field $dialog 'numpad'
+      if($pad.Visibility -ne 'Visible'){throw 'Numeric keypad must always be visible'}
+      $tiles=Field $dialog 'keyTiles'
+      $ins=$tiles[[Windows.Input.Key]::Insert][0];$del=$tiles[[Windows.Input.Key]::Delete][0]
+      if([Windows.Controls.Grid]::GetRow($ins) -ne 1 -or [Windows.Controls.Grid]::GetRow($del) -ne 2){throw 'Navigation keys are not in natural rows'}
+      if($pad.Parent.Children[1] -ne $ins.Parent){throw 'Navigation cluster is not between letters and numpad'}
+      if($tiles[[Windows.Input.Key]::Return].Count -ne 2){throw 'Both physical Enter keys must be shown'}
+      $header=$dialog.Content.Children[0]
+      if($header.Children.Count -ne 2 -or $header.Children[0].Content -ne 'Reset'){throw 'Reset must share the information line'}
+      if($dialog.Content.Children.Count -ne 2){throw 'Unexpected standalone controls or info rows'}
      }
      if($dialog.Title -eq 'Camera test' -and (Field $dialog 'preview') -ne $null){throw 'Camera started automatically'}
      if($dialog.Title -eq 'Stereo speaker test' -and (Field $dialog 'player') -ne $null){throw 'Audio started automatically'}

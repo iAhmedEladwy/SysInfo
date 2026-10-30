@@ -55,6 +55,12 @@ namespace CNSysInfo
             var project = new TextBlock();
             project.Inlines.Add(Link("GitHub releases", "https://github.com/iAhmedEladwy/SysInfo/releases"));
             body.Children.Add(Detail("Project", project));
+            body.Children.Add(new Border
+            {
+                Background = Ice, CornerRadius = new CornerRadius(8), Padding = new Thickness(12, 10, 12, 10), Margin = new Thickness(0, 16, 0, 0),
+                Child = new TextBlock { Text = "صدقة جارية لوالدي\nنسألكم الدعاء له بالرحمة والمغفرة.", FlowDirection = FlowDirection.RightToLeft,
+                    TextAlignment = TextAlignment.Center, TextWrapping = TextWrapping.Wrap, FontSize = 14, Foreground = Navy }
+            });
             var actions = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right,
                 Margin = new Thickness(0, 20, 0, 0) };
             var copy = ActionButton("Copy email");
