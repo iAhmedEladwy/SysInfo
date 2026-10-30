@@ -17,14 +17,23 @@ namespace CNSysInfo
         public void Reset() { held.Clear(); tested.Clear(); }
     }
 
+    internal enum SpeakerSample { ChannelTone, FrequencySweep, Music }
+    internal enum SpeakerChannel { Left, Right, Both }
+
     internal static class StereoTestTone
     {
         public const int SampleRate = 44100;
         public const double DurationSeconds = 1.2;
         public const double Amplitude = 0.12;
-        public static byte[] CreateWave(bool left)
+        public static double Duration(SpeakerSample sample) => sample == SpeakerSample.ChannelTone ? DurationSeconds : sample == SpeakerSample.FrequencySweep ? 5 : 6;
+        public static byte[] CreateWave(bool left) => CreateWave(SpeakerSample.ChannelTone, left ? SpeakerChannel.Left : SpeakerChannel.Right);
+
+        public static byte[] CreateWave(SpeakerSample sample, SpeakerChannel channel)
         {
-            int frames = (int)(SampleRate * DurationSeconds);
+            if (!Enum.IsDefined(typeof(SpeakerSample), sample) || !Enum.IsDefined(typeof(SpeakerChannel), channel))
+                throw new ArgumentOutOfRangeException();
+            double seconds = Duration(sample);
+            int frames = (int)(SampleRate * seconds);
             using (var stream = new MemoryStream())
             using (var writer = new BinaryWriter(stream, Encoding.ASCII))
             {
@@ -34,12 +43,29 @@ namespace CNSysInfo
                 writer.Write(SampleRate * 4); writer.Write((short)4); writer.Write((short)16);
                 writer.Write(Encoding.ASCII.GetBytes("data")); writer.Write(frames * 4);
                 int fade = SampleRate / 50;
+                double sweepRate = Math.Log(6000.0 / 180) / seconds;
+                double[] notes = { 261.6256, 329.6276, 391.9954, 523.2511, 493.8833, 391.9954, 329.6276, 293.6648 };
                 for (int i = 0; i < frames; i++)
                 {
-                    double envelope = Math.Min(1.0, Math.Min((double)i / fade, (double)(frames - 1 - i) / fade));
-                    short value = (short)(short.MaxValue * Amplitude * envelope * Math.Sin(2 * Math.PI * 440 * i / SampleRate));
-                    writer.Write(left ? value : (short)0);
-                    writer.Write(left ? (short)0 : value);
+                    double t = (double)i / SampleRate;
+                    double signal;
+                    if (sample == SpeakerSample.FrequencySweep)
+                        signal = Math.Sin(2 * Math.PI * 180 * (Math.Exp(sweepRate * t) - 1) / sweepRate);
+                    else if (sample == SpeakerSample.Music)
+                    {
+                        const double noteDuration = 0.375;
+                        int note = (int)(t / noteDuration);
+                        double local = t - note * noteDuration;
+                        double phase = 2 * Math.PI * notes[note % notes.Length] * local;
+                        double envelope = Math.Min(1, local / 0.015) * Math.Pow(Math.Max(0, 1 - local / noteDuration), 0.7);
+                        signal = 0.8 * envelope * (0.58 * Math.Sin(phase) + 0.24 * Math.Sin(2 * phase) + 0.12 * Math.Sin(3 * phase) + 0.06 * Math.Sin(4 * phase))
+                            + 0.2 * Math.Sin(2 * Math.PI * 196 * t);
+                    }
+                    else signal = Math.Sin(2 * Math.PI * 440 * t);
+                    double fadeEnvelope = Math.Min(1.0, Math.Min((double)i / fade, (double)(frames - 1 - i) / fade));
+                    short value = (short)(short.MaxValue * Amplitude * fadeEnvelope * Math.Max(-1, Math.Min(1, signal)));
+                    writer.Write(channel == SpeakerChannel.Right ? (short)0 : value);
+                    writer.Write(channel == SpeakerChannel.Left ? (short)0 : value);
                 }
                 writer.Flush(); return stream.ToArray();
             }

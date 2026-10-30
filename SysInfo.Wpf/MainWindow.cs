@@ -67,7 +67,7 @@ namespace CNSysInfo
         private Button btnCopy;
         private Button btnTools;
         private Button btnPower;
-        private Button btnTests;
+        private Button btnKeyboard, btnSpeakers, btnCamera;
         private StackPanel content;
         private Border ratingBanner;
         private TextBlock ratingCaption;
@@ -294,7 +294,7 @@ namespace CNSysInfo
             return new Button
             {
                 Content = text,
-                Padding = new Thickness(7, 4, 7, 4),
+                Padding = new Thickness(4, 4, 4, 4),
                 FontSize = 11,
                 Margin = new Thickness(0, 0, 6, 2),
                 Background = Brushes.White,
@@ -438,15 +438,15 @@ namespace CNSysInfo
             toolsMenu.Items.Add(ToolMenuItem("Update settings", null, UpdateSettings_Click));
             btnTools.ContextMenu = toolsMenu;
 
-            btnTests = ToolButton("Tests ▾");
-            btnTests.Click += Menu_Click;
-            btnTests.ToolTip = "Keyboard, stereo speakers and camera checks";
-            var testsMenu = new ContextMenu { Background = Brushes.White, Foreground = InkBrush };
-            testsMenu.Items.Add(ToolMenuItem("Keyboard test", null, (_, __) => ShowDiagnostic(new KeyboardTestWindow())));
-            testsMenu.Items.Add(ToolMenuItem("Stereo speaker test", null, (_, __) => ShowDiagnostic(new StereoSpeakerTestWindow())));
-            testsMenu.Items.Add(ToolMenuItem("Camera test", null, (_, __) => ShowDiagnostic(new CameraTestWindow())));
-            btnTests.ContextMenu = testsMenu;
-
+            btnKeyboard = ToolButton("Keyboard");
+            btnKeyboard.ToolTip = "Open keyboard test";
+            btnKeyboard.Click += (_, __) => ShowDiagnostic(new KeyboardTestWindow());
+            btnSpeakers = ToolButton("Speakers");
+            btnSpeakers.ToolTip = "Check left/right speakers for buzzing, rattling and distortion";
+            btnSpeakers.Click += (_, __) => ShowDiagnostic(new StereoSpeakerTestWindow());
+            btnCamera = ToolButton("Camera");
+            btnCamera.ToolTip = "Open camera preview test";
+            btnCamera.Click += (_, __) => ShowDiagnostic(new CameraTestWindow());
             btnPower = ToolButton("Restart...");
             btnPower.Click += Menu_Click;
             var powerMenu = new ContextMenu { Background = Brushes.White, Foreground = InkBrush };
@@ -460,7 +460,9 @@ namespace CNSysInfo
             bar.Children.Add(btnExport);
             bar.Children.Add(btnCopy);
             bar.Children.Add(btnTools);
-            bar.Children.Add(btnTests);
+            bar.Children.Add(btnKeyboard);
+            bar.Children.Add(btnSpeakers);
+            bar.Children.Add(btnCamera);
             bar.Children.Add(btnPower);
             toolbar.Child = bar;
             root.Children.Add(toolbar);

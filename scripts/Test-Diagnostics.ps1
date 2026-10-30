@@ -32,11 +32,12 @@ try{
  if($width -ne 760){throw 'Unexpected default width'}
  $powerTimer=Field $window '_powerTimer'
  if(!$powerTimer.IsEnabled){throw 'Live monitoring did not start'}
- $tests=Field $window 'btnTests'
- if($tests.ContextMenu.Items.Count -ne 3){throw 'Missing diagnostic entries'}
- $tests.ContextMenu.IsOpen=$true;Pump 50;$tests.ContextMenu.IsOpen=$false
+ $testButtons=@('btnKeyboard','btnSpeakers','btnCamera' | ForEach-Object {Field $window $_})
+ if($testButtons.Count -ne 3 -or @($testButtons | Where-Object {$_.ContextMenu}).Count -ne 0){throw 'Tests must be directly available as toolbar buttons'}
+ $toolbar=Field $window 'toolbar'
+ if($toolbar.Child.DesiredSize.Width -gt 488){throw ('Toolbar does not fit minimum width: '+$toolbar.Child.DesiredSize.Width)}
  $script:checked=$null;$script:dialogFailure=$null
- foreach($item in $tests.ContextMenu.Items){
+ foreach($item in $testButtons){
   $timer=New-Object Windows.Threading.DispatcherTimer;$timer.Interval=[TimeSpan]::FromMilliseconds(250)
   $timer.Add_Tick({param($sender,$args)
    $sender.Stop()
@@ -59,13 +60,13 @@ try{
       if($dialog.Content.Children.Count -ne 2){throw 'Unexpected standalone controls or info rows'}
      }
      if($dialog.Title -eq 'Camera test' -and (Field $dialog 'preview') -ne $null){throw 'Camera started automatically'}
-     if($dialog.Title -eq 'Stereo speaker test' -and (Field $dialog 'player') -ne $null){throw 'Audio started automatically'}
+     if($dialog.Title -eq 'Speaker quality test' -and (Field $dialog 'player') -ne $null){throw 'Audio started automatically'}
     }catch{$script:dialogFailure=$_}
     finally{$dialog.Close()}
    }
   })
   $timer.Start()
-  $item.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.MenuItem]::ClickEvent))
+  $item.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))
   if($script:dialogFailure){throw $script:dialogFailure}
   if(!$script:checked){throw 'Diagnostic did not open'}
   if($window.Width -ne $width -or $window.Height -ne $height){throw 'Opening a diagnostic resized the main window'}

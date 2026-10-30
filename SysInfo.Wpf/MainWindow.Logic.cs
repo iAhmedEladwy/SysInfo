@@ -51,7 +51,9 @@ namespace CNSysInfo
             btnCopy.IsEnabled = !busy && _ui != null;
             btnTools.IsEnabled = !busy;
             btnPower.IsEnabled = !busy;
-            btnTests.IsEnabled = !busy;
+            btnKeyboard.IsEnabled = !busy;
+            btnSpeakers.IsEnabled = !busy;
+            btnCamera.IsEnabled = !busy;
             Mouse.OverrideCursor = busy ? Cursors.Wait : null;
         }
 
