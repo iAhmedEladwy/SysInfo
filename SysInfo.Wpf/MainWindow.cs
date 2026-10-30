@@ -460,6 +460,7 @@ namespace CNSysInfo
             bar.Children.Add(btnExport);
             bar.Children.Add(btnCopy);
             bar.Children.Add(btnTools);
+            bar.Children.Add(btnPower);
             var tests = new StackPanel { Orientation = Orientation.Horizontal };
             tests.Children.Add(new TextBlock { Text = "Tests:", FontSize = 10.5, FontWeight = FontWeights.SemiBold,
                 Foreground = AccentBrush, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(2, 0, 4, 2) });
@@ -471,7 +472,6 @@ namespace CNSysInfo
                 Padding = new Thickness(3, 0, 3, 0), Margin = new Thickness(0, 0, 4, 0) };
             System.Windows.Automation.AutomationProperties.SetName(testGroup, "Hardware tests");
             bar.Children.Add(testGroup);
-            bar.Children.Add(btnPower);
             toolbar.Child = bar;
             root.Children.Add(toolbar);
 
