@@ -68,6 +68,7 @@ namespace CNSysInfo
         private Button btnTools;
         private Button btnPower;
         private Button btnKeyboard, btnSpeakers, btnCamera;
+        private Button btnScreen, btnMouse, btnMicrophone, btnUsb, btnMoreTests, btnReport;
         private StackPanel content;
         private Border ratingBanner;
         private TextBlock ratingCaption;
@@ -232,6 +233,15 @@ namespace CNSysInfo
                 Math.Min(content.DesiredSize.Height, previousContentHeight) + toolbar.ActualHeight + statusBorder.ActualHeight + chrome + 12));
             Left = Math.Max(work.Left, work.Left + (work.Width - ActualWidth) / 2);
             Top = Math.Max(work.Top, work.Top + (work.Height - Height) / 2);
+        }
+
+        private void UpdateTestToolbar()
+        {
+            bool narrow = toolbar.ActualWidth < 710;
+            foreach (var button in new[] { btnScreen, btnMouse, btnMicrophone, btnUsb }) button.Visibility = narrow ? Visibility.Collapsed : Visibility.Visible;
+            btnMoreTests.Visibility = narrow ? Visibility.Visible : Visibility.Collapsed;
+            btnReport.Visibility = narrow ? Visibility.Visible : Visibility.Collapsed;
+            btnExport.Visibility = btnCopy.Visibility = narrow ? Visibility.Collapsed : Visibility.Visible;
         }
 
         // ---- style helpers (same values as the App.xaml styles) ----
@@ -447,6 +457,23 @@ namespace CNSysInfo
             btnCamera = ToolButton("Camera");
             btnCamera.ToolTip = "Open camera preview test";
             btnCamera.Click += (_, __) => ShowDiagnostic(new CameraTestWindow());
+            btnScreen = ToolButton("Screen"); btnScreen.ToolTip = "Fullscreen solid-colour screen inspection"; btnScreen.Click += (_, __) => ShowDiagnostic(new ScreenTestWindow());
+            btnMouse = ToolButton("Mouse"); btnMouse.ToolTip = "Mouse and touchpad input test"; btnMouse.Click += (_, __) => ShowDiagnostic(new MouseTestWindow());
+            btnMicrophone = ToolButton("Microphone"); btnMicrophone.ToolTip = "Microphone level and short record/playback test"; btnMicrophone.Click += (_, __) => ShowDiagnostic(new MicrophoneTestWindow());
+            btnUsb = ToolButton("USB"); btnUsb.ToolTip = "USB connection and removal detection"; btnUsb.Click += (_, __) => ShowDiagnostic(new UsbTestWindow());
+            btnMoreTests = ToolButton("More ▾"); btnMoreTests.ToolTip = "More hardware tests"; btnMoreTests.Click += Menu_Click;
+            var moreTests = new ContextMenu { Background = Brushes.White, Foreground = InkBrush };
+            moreTests.Items.Add(ToolMenuItem("Screen test", null, (_, __) => ShowDiagnostic(new ScreenTestWindow())));
+            moreTests.Items.Add(ToolMenuItem("Mouse / touchpad test", null, (_, __) => ShowDiagnostic(new MouseTestWindow())));
+            moreTests.Items.Add(ToolMenuItem("Microphone test", null, (_, __) => ShowDiagnostic(new MicrophoneTestWindow())));
+            moreTests.Items.Add(ToolMenuItem("USB detection test", null, (_, __) => ShowDiagnostic(new UsbTestWindow())));
+            btnMoreTests.Padding = new Thickness(3, 4, 3, 4);
+            btnMoreTests.ContextMenu = moreTests; btnMoreTests.Visibility = Visibility.Collapsed;
+            btnReport = ToolButton("Report ▾"); btnReport.ToolTip = "Export report or copy system information"; btnReport.Click += Menu_Click;
+            var reports = new ContextMenu { Background = Brushes.White, Foreground = InkBrush };
+            reports.Items.Add(ToolMenuItem("Export report", null, Export_Click)); reports.Items.Add(ToolMenuItem("Copy info", null, Copy_Click));
+            btnReport.Padding = new Thickness(3, 4, 3, 4);
+            btnReport.ContextMenu = reports; btnReport.Visibility = Visibility.Collapsed;
             btnPower = ToolButton("Restart...");
             btnPower.Click += Menu_Click;
             var powerMenu = new ContextMenu { Background = Brushes.White, Foreground = InkBrush };
@@ -459,6 +486,7 @@ namespace CNSysInfo
             bar.Children.Add(btnRefresh);
             bar.Children.Add(btnExport);
             bar.Children.Add(btnCopy);
+            bar.Children.Add(btnReport);
             bar.Children.Add(btnTools);
             bar.Children.Add(btnPower);
             var tests = new StackPanel { Orientation = Orientation.Horizontal };
@@ -467,12 +495,15 @@ namespace CNSysInfo
             btnKeyboard.Margin = new Thickness(0, 0, 2, 2);
             btnSpeakers.Margin = new Thickness(0, 0, 2, 2);
             btnCamera.Margin = new Thickness(0, 0, 0, 2);
-            tests.Children.Add(btnKeyboard); tests.Children.Add(btnSpeakers); tests.Children.Add(btnCamera);
+            foreach (var button in new[] { btnKeyboard, btnSpeakers, btnCamera, btnScreen, btnMouse, btnMicrophone, btnUsb, btnMoreTests })
+            { button.Margin = new Thickness(0, 0, 2, 2); tests.Children.Add(button); }
+            btnUsb.Margin = new Thickness(0, 0, 0, 2); btnMoreTests.Margin = new Thickness(0, 0, 0, 2);
             var testGroup = new Border { Child = tests, Background = Freeze("#EAF3FF"), CornerRadius = new CornerRadius(6),
                 Padding = new Thickness(3, 0, 3, 0), Margin = new Thickness(0, 0, 4, 0) };
             System.Windows.Automation.AutomationProperties.SetName(testGroup, "Hardware tests");
             bar.Children.Add(testGroup);
             toolbar.Child = bar;
+            toolbar.SizeChanged += (_, __) => UpdateTestToolbar();
             root.Children.Add(toolbar);
 
             // scrollable content

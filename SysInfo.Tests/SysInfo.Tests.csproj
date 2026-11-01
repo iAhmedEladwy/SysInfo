@@ -30,6 +30,7 @@
     <Compile Include="..\SysInfo.Wpf\CpuSupportEvaluator.cs" Link="Linked\CpuSupportEvaluator.cs" />
     <Compile Include="..\SysInfo.Wpf\WindowsVersionInfo.cs" Link="Linked\WindowsVersionInfo.cs" />
     <Compile Include="..\SysInfo.Wpf\WmiValueParser.cs" Link="Linked\WmiValueParser.cs" />
+    <Compile Include="..\SysInfo.Wpf\AdditionalDiagnosticLogic.cs" Link="Linked\AdditionalDiagnosticLogic.cs" />
     <Compile Include="..\SysInfo.Wpf\DiagnosticLogic.cs" Link="Linked\DiagnosticLogic.cs" />
     <Compile Include="..\SysInfo.Wpf\LivePowerState.cs" Link="Linked\LivePowerState.cs" />
     <Compile Include="..\SysInfo.Wpf\BatteryMapper.cs" Link="Linked\BatteryMapper.cs" />

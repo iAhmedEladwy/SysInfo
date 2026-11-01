@@ -32,12 +32,17 @@ try{
  if($width -ne 760){throw 'Unexpected default width'}
  $powerTimer=Field $window '_powerTimer'
  if(!$powerTimer.IsEnabled){throw 'Live monitoring did not start'}
- $testButtons=@('btnKeyboard','btnSpeakers','btnCamera' | ForEach-Object {Field $window $_})
- if($testButtons.Count -ne 3 -or @($testButtons | Where-Object {$_.ContextMenu}).Count -ne 0){throw 'Tests must be directly available as toolbar buttons'}
+ $testButtons=@('btnKeyboard','btnSpeakers','btnCamera','btnScreen','btnMouse','btnMicrophone','btnUsb' | ForEach-Object {Field $window $_})
+ if($testButtons.Count -ne 7 -or @($testButtons | Where-Object {$_.ContextMenu}).Count -ne 0){throw 'Tests must be directly available as toolbar buttons'}
  $group=$testButtons[0].Parent
  if($group.Children[0].Text -ne 'Tests:' -or $testButtons[1].Parent -ne $group -or $testButtons[2].Parent -ne $group){throw 'Discoverable Tests group label missing'}
  $toolbar=Field $window 'toolbar'
- if($toolbar.Child.DesiredSize.Width -gt 488){throw ('Toolbar does not fit minimum width: '+$toolbar.Child.DesiredSize.Width)}
+ if($toolbar.Child.DesiredSize.Width -gt $toolbar.ActualWidth-16){throw 'Toolbar does not fit default width'}
+ $window.Width=520;Pump 80;$window.UpdateLayout()
+ if($toolbar.Child.DesiredSize.Width -gt $toolbar.ActualWidth-16){throw ('Toolbar does not fit minimum width: '+$toolbar.Child.DesiredSize.Width)}
+ if((Field $window 'btnMoreTests').Visibility -ne 'Visible' -or (Field $window 'btnReport').Visibility -ne 'Visible'){throw 'Narrow toolbar overflow is missing'}
+ $window.Width=$width;Pump 80;$window.UpdateLayout()
+ if(@($testButtons | Where-Object {$_.Visibility -ne 'Visible'}).Count -ne 0){throw 'All seven tests must be visible at default width'}
  $script:checked=$null;$script:dialogFailure=$null
  foreach($item in $testButtons){
   $timer=New-Object Windows.Threading.DispatcherTimer;$timer.Interval=[TimeSpan]::FromMilliseconds(250)
@@ -45,6 +50,7 @@ try{
    $sender.Stop()
    foreach($dialog in @($app.Windows)){
     if($dialog -eq $window){continue}
+    $fakeAudio=$null
     try{
      $script:checked=$dialog.Title
      if($dialog.Title -eq 'Keyboard test'){
@@ -62,9 +68,19 @@ try{
       if($dialog.Content.Children.Count -ne 2){throw 'Unexpected standalone controls or info rows'}
      }
      if($dialog.Title -eq 'Camera test' -and (Field $dialog 'preview') -ne $null){throw 'Camera started automatically'}
+     if($dialog.Title -eq 'Microphone test' -and ((Field $dialog 'capture') -ne $null -or (Field $dialog 'player') -ne $null -or (Field $dialog 'recording') -ne $null)){throw 'Microphone started or retained a recording automatically'}
+     if($dialog.Title -eq 'Microphone test'){
+      $fakeAudio=[byte[]]@(1,2,3,4)
+      $dialog.GetType().GetField('recording',$flags).SetValue($dialog,$fakeAudio)
+     }
+     if($dialog.Title -eq 'Screen test' -and $app.Windows.Count -gt 2){throw 'Screen inspection entered fullscreen automatically'}
      if($dialog.Title -eq 'Speaker quality test' -and (Field $dialog 'player') -ne $null){throw 'Audio started automatically'}
     }catch{$script:dialogFailure=$_}
-    finally{$dialog.Close()}
+    finally{
+     $dialog.Close()
+     if($fakeAudio -and @($fakeAudio | Where-Object {$_ -ne 0}).Count -gt 0){$script:dialogFailure='Recording bytes were not cleared on close'}
+     if($dialog.Title -eq 'USB detection test' -and (Field $dialog 'timer').IsEnabled){$script:dialogFailure='USB polling remained active after close'}
+    }
    }
   })
   $timer.Start()

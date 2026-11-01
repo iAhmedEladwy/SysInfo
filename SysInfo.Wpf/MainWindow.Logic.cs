@@ -54,6 +54,8 @@ namespace CNSysInfo
             btnKeyboard.IsEnabled = !busy;
             btnSpeakers.IsEnabled = !busy;
             btnCamera.IsEnabled = !busy;
+            btnScreen.IsEnabled = btnMouse.IsEnabled = btnMicrophone.IsEnabled = btnUsb.IsEnabled = btnMoreTests.IsEnabled = !busy;
+            btnReport.IsEnabled = !busy && _ui != null;
             Mouse.OverrideCursor = busy ? Cursors.Wait : null;
         }
 
