@@ -303,35 +303,26 @@ namespace CNSysInfo
 
         private static ActivationResult QueryWindowsActivation(bool fallback, int timeoutMs)
         {
-            const string windowsApplicationId = "55c92734-d682-4d71-983e-d6ec3f16059f";
-            string filter = fallback ? "Description LIKE 'Windows%'" : $"ApplicationID = '{windowsApplicationId}'";
+            if (!fallback) return WindowsActivationReader.Read(timeoutMs);
             try
             {
-                using (var searcher = new ManagementObjectSearcher("SELECT LicenseStatus, PartialProductKey FROM SoftwareLicensingProduct WHERE " + filter))
+                using (var searcher = new ManagementObjectSearcher("SELECT ApplicationID,Name,LicenseFamily,LicenseIsAddon,LicenseStatus,PartialProductKey FROM SoftwareLicensingProduct WHERE ApplicationID='" + ActivationLogic.WindowsApplicationId + "'"))
                 {
                     searcher.Options.Timeout = TimeSpan.FromMilliseconds(Math.Max(1, timeoutMs));
-                    WindowsLicenseStatus? found = null;
-                    using (var rows = searcher.Get())
-                    foreach (ManagementObject obj in rows)
-                    using (obj)
+                    var candidates = new List<ActivationCandidate>();
+                    using (var rows = searcher.Get()) foreach (ManagementObject row in rows) using (row)
                     {
-                        if (obj == null || obj["LicenseStatus"] == null || string.IsNullOrWhiteSpace(obj["PartialProductKey"]?.ToString())) continue;
-                        int code = Convert.ToInt32(obj["LicenseStatus"]);
-                        if (code < 0 || code > 6) continue;
-                        var status = (WindowsLicenseStatus)code;
-                        if (status == WindowsLicenseStatus.Licensed) return new ActivationResult(status, ActivationUnavailableReason.None, DateTime.Now);
-                        if (!found.HasValue) found = status;
+                        if (row["LicenseStatus"] == null) continue;
+                        candidates.Add(new ActivationCandidate { ApplicationId = Convert.ToString(row["ApplicationID"]), Name = Convert.ToString(row["Name"]), Family = Convert.ToString(row["LicenseFamily"]),
+                            IsAddon = row["LicenseIsAddon"] != null && Convert.ToBoolean(row["LicenseIsAddon"]), Status = Convert.ToInt32(row["LicenseStatus"]),
+                            HasPartialKey = !string.IsNullOrWhiteSpace(Convert.ToString(row["PartialProductKey"])) });
                     }
-                    return found.HasValue ? new ActivationResult(found, ActivationUnavailableReason.None, DateTime.Now) : ActivationResult.Unavailable(ActivationUnavailableReason.NoInstalledRows);
+                    return ActivationLogic.SelectRows(candidates, WindowsActivationReader.Edition());
                 }
             }
-            catch (ManagementException ex)
-            {
-                return ActivationResult.Unavailable(ex.ErrorCode == ManagementStatus.Timedout ? ActivationUnavailableReason.Timeout : ActivationUnavailableReason.Error);
-            }
+            catch (ManagementException ex) { return ActivationResult.Unavailable(ex.ErrorCode == ManagementStatus.Timedout ? ActivationUnavailableReason.Timeout : ActivationUnavailableReason.Error); }
             catch (Exception) { return ActivationResult.Unavailable(ActivationUnavailableReason.Error); }
-        }
-        private static CpuDescriptor GetCpuDescriptor()
+        }        private static CpuDescriptor GetCpuDescriptor()
         {
             // Win32_Processor has no "Model" property (selecting it makes the whole query fail), and its "Family"
             // is the SMBIOS processor family enum, not the CPUID family. CPUID family/model come from ProcessorId.

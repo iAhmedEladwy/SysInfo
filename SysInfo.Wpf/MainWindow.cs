@@ -459,13 +459,13 @@ namespace CNSysInfo
             btnCamera.Click += (_, __) => ShowDiagnostic(new CameraTestWindow());
             btnScreen = ToolButton("Screen"); btnScreen.ToolTip = "Fullscreen solid-colour screen inspection"; btnScreen.Click += (_, __) => ShowDiagnostic(new ScreenTestWindow());
             btnMouse = ToolButton("Mouse"); btnMouse.ToolTip = "Mouse and touchpad input test"; btnMouse.Click += (_, __) => ShowDiagnostic(new MouseTestWindow());
-            btnMicrophone = ToolButton("Microphone"); btnMicrophone.ToolTip = "Microphone level and short record/playback test"; btnMicrophone.Click += (_, __) => ShowDiagnostic(new MicrophoneTestWindow());
+            btnMicrophone = ToolButton("Mic"); btnMicrophone.ToolTip = "Live microphone activity—no recording"; btnMicrophone.Click += (_, __) => ShowDiagnostic(new MicrophoneTestWindow());
             btnUsb = ToolButton("USB"); btnUsb.ToolTip = "USB connection and removal detection"; btnUsb.Click += (_, __) => ShowDiagnostic(new UsbTestWindow());
             btnMoreTests = ToolButton("More ▾"); btnMoreTests.ToolTip = "More hardware tests"; btnMoreTests.Click += Menu_Click;
             var moreTests = new ContextMenu { Background = Brushes.White, Foreground = InkBrush };
             moreTests.Items.Add(ToolMenuItem("Screen test", null, (_, __) => ShowDiagnostic(new ScreenTestWindow())));
             moreTests.Items.Add(ToolMenuItem("Mouse / touchpad test", null, (_, __) => ShowDiagnostic(new MouseTestWindow())));
-            moreTests.Items.Add(ToolMenuItem("Microphone test", null, (_, __) => ShowDiagnostic(new MicrophoneTestWindow())));
+            moreTests.Items.Add(ToolMenuItem("Mic test", null, (_, __) => ShowDiagnostic(new MicrophoneTestWindow())));
             moreTests.Items.Add(ToolMenuItem("USB detection test", null, (_, __) => ShowDiagnostic(new UsbTestWindow())));
             btnMoreTests.Padding = new Thickness(3, 4, 3, 4);
             btnMoreTests.ContextMenu = moreTests; btnMoreTests.Visibility = Visibility.Collapsed;

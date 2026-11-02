@@ -23,18 +23,24 @@ namespace CNSysInfo.Tests
             CollectionAssert.AreEqual(new[] { "USB\\B" }, UsbDiagnosticLogic.Added(after, before));
             Assert.AreEqual(0, UsbDiagnosticLogic.Added(before, before).Length);
         }
-        [TestMethod] public void MicrophoneWaveContainsOnlyBoundedMonoPcm()
+        [TestMethod] public void MicLevelsHandleSilenceAndSignedPeaksWithoutRecording()
         {
-            var pcm = new byte[] { 0, 0, 255, 127, 0, 128, 0, 0 };
-            var wave = MicrophoneWave.Create(pcm);
-            Assert.AreEqual("RIFF", System.Text.Encoding.ASCII.GetString(wave, 0, 4));
-            Assert.AreEqual(1, BitConverter.ToInt16(wave, 22)); Assert.AreEqual(22050, BitConverter.ToInt32(wave, 24));
-            Assert.AreEqual(16, BitConverter.ToInt16(wave, 34)); Assert.AreEqual(wave.Length - 8, BitConverter.ToInt32(wave, 4));
-            Assert.AreEqual(pcm.Length, BitConverter.ToInt32(wave, 40)); CollectionAssert.AreEqual(pcm, wave.Skip(44).ToArray());
-            Assert.AreEqual(100, MicrophoneWave.Peak(pcm)); Assert.AreEqual(0, MicrophoneWave.Peak(new byte[20]));
-            Assert.ThrowsException<ArgumentException>(() => MicrophoneWave.Create(null));
-            Assert.ThrowsException<ArgumentException>(() => MicrophoneWave.Create(new byte[1]));
-            Assert.ThrowsException<ArgumentException>(() => MicrophoneWave.Create(new byte[MicrophoneWave.MaximumBytes + 2]));
+            Assert.AreEqual(0, MicrophoneLevels.Peak(new byte[20]));
+            Assert.AreEqual(100, MicrophoneLevels.Peak(new byte[] { 0, 128 }));
+            Assert.AreEqual(50, MicrophoneLevels.Peak(new byte[] { 0, 64 }));
+            Assert.AreEqual(0, MicrophoneLevels.Peak(new byte[0]));
+        }
+        [TestMethod] public void UsbLinkRateDoesNotConfuseCapabilityWithOperatingSpeed()
+        {
+            Assert.AreEqual("480 Mbps · High speed", UsbDiagnosticLogic.LinkSpeed(2, 2)); // SuperSpeed-capable, not operating at it.
+            Assert.AreEqual("5 Gbps · SuperSpeed", UsbDiagnosticLogic.LinkSpeed(2, 1)); // v2 overrides legacy speed reporting.
+            Assert.AreEqual("10 Gbps or higher · SuperSpeedPlus", UsbDiagnosticLogic.LinkSpeed(3, 4));
+            Assert.AreEqual("Unavailable", UsbDiagnosticLogic.LinkSpeed(255, 0));
+            Assert.AreEqual("USB 3.2", UsbDiagnosticLogic.UsbVersion(0x0320));
+            Assert.AreEqual("USB 2.0", UsbDiagnosticLogic.UsbVersion(0x0200));
+            Assert.AreEqual("Unavailable", UsbDiagnosticLogic.UsbVersion(0x03ff));
+            Assert.AreEqual("USB 1.x / USB 2.0 / USB 3.x", UsbDiagnosticLogic.PortProtocols(7));
+            Assert.AreEqual("Unavailable", UsbDiagnosticLogic.PortProtocols(0));
         }
     }
 }

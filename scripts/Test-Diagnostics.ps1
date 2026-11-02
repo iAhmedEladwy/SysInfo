@@ -50,7 +50,6 @@ try{
    $sender.Stop()
    foreach($dialog in @($app.Windows)){
     if($dialog -eq $window){continue}
-    $fakeAudio=$null
     try{
      $script:checked=$dialog.Title
      if($dialog.Title -eq 'Keyboard test'){
@@ -68,27 +67,27 @@ try{
       if($dialog.Content.Children.Count -ne 2){throw 'Unexpected standalone controls or info rows'}
      }
      if($dialog.Title -eq 'Camera test' -and (Field $dialog 'preview') -ne $null){throw 'Camera started automatically'}
-     if($dialog.Title -eq 'Microphone test' -and ((Field $dialog 'capture') -ne $null -or (Field $dialog 'player') -ne $null -or (Field $dialog 'recording') -ne $null)){throw 'Microphone started or retained a recording automatically'}
-     if($dialog.Title -eq 'Microphone test'){
-      $fakeAudio=[byte[]]@(1,2,3,4)
-      $dialog.GetType().GetField('recording',$flags).SetValue($dialog,$fakeAudio)
-     }
+     if($dialog.Title -eq 'Mic test' -and (Field $dialog 'input') -ne $null){throw 'Muted UI fixture opened live input'}
+
      if($dialog.Title -eq 'Screen test' -and $app.Windows.Count -gt 2){throw 'Screen inspection entered fullscreen automatically'}
      if($dialog.Title -eq 'Speaker quality test' -and (Field $dialog 'player') -ne $null){throw 'Audio started automatically'}
     }catch{$script:dialogFailure=$_}
     finally{
      $dialog.Close()
-     if($fakeAudio -and @($fakeAudio | Where-Object {$_ -ne 0}).Count -gt 0){$script:dialogFailure='Recording bytes were not cleared on close'}
-     if($dialog.Title -eq 'USB detection test' -and (Field $dialog 'timer').IsEnabled){$script:dialogFailure='USB polling remained active after close'}
+     if($dialog.Title -eq 'USB devices and ports' -and (Field $dialog 'timer').IsEnabled){$script:dialogFailure='USB polling remained active after close'}
     }
    }
   })
   $timer.Start()
-  $item.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))
+  if($item -eq (Field $window 'btnMicrophone')){
+   # The product intentionally listens on open; do not activate real hardware in unattended UI checks.
+   $muted=[Activator]::CreateInstance($asm.GetType('CNSysInfo.MicrophoneTestWindow'),[Reflection.BindingFlags]'Instance,Public,NonPublic',$null,[object[]]@($false),$null)
+   $muted.Owner=$window;$null=$muted.ShowDialog()
+  }else{$item.RaiseEvent([Windows.RoutedEventArgs]::new([Windows.Controls.Button]::ClickEvent))}
   if($script:dialogFailure){throw $script:dialogFailure}
   if(!$script:checked){throw 'Diagnostic did not open'}
   if($window.Width -ne $width -or $window.Height -ne $height){throw 'Opening a diagnostic resized the main window'}
-  Write-Output ('PASS: modal '+$script:checked+' opens/closes, no automatic camera/audio, main size unchanged.')
+  Write-Output ('PASS: modal '+$script:checked+' opens/closes, main size unchanged; mic uses a muted fixture in unattended checks.')
   $script:checked=$null
  }
  Call $window 'UpdateLivePower' @() | Out-Null
